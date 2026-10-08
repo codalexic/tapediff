@@ -1,0 +1,22 @@
+name: Feature request
+description: Describe a workflow tapediff should support.
+title: 'Feature: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: What are you trying to accomplish? Include provider/SDK when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: A concrete example of input and expected output helps.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

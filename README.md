@@ -1,0 +1,152 @@
+# tapediff
+
+[![CI](https://github.com/codalexic/tapediff/actions/workflows/ci.yml/badge.svg)](https://github.com/codalexic/tapediff/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/tapediff.svg)](https://www.npmjs.com/package/tapediff)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Snapshot testing for AI agents.**
+
+Record → replay → diff. Local, no account. Works with the official OpenAI and
+Anthropic SDKs without code changes when they use their environment-based URLs.
+
+![tapediff diff output](docs/assets/diff.svg)
+
+Same answer. Extra tool call. The diff catches the prompt change that caused it.
+(From the [Python example](examples/python-openai).)
+
+## Why
+
+- **Agent changes are invisible.** A small prompt edit can add tool calls while the answer looks identical.
+- **Real runs cost money and aren't deterministic.** Replay recorded LLM responses without another provider request.
+- **Eyeballing doesn't scale.** Review behavior diffs locally and fail CI on request drift.
+
+## Quickstart
+
+Requires Node.js >=20 and your agent's dependencies. With your API key set,
+record a run of your agent:
+
+```sh
+npx tapediff record -- python my_agent.py
+# edit your prompt, then
+npx tapediff record --out v2.tape -- python my_agent.py
+npx tapediff diff run.tape v2.tape
+npx tapediff test tapes -- python my_agent.py "{tape}"
+```
+
+The diff exits **1** when behavior changes. For `test`, put reviewed baseline
+tapes in `tapes/` and have your agent select its scenario from the `{tape}` argument.
+Replay needs no provider key; your agent and its tools still run.
+
+### Try it without an API key
+
+```sh
+git clone https://github.com/codalexic/tapediff.git
+cd tapediff/examples/python-openai
+python -m pip install -r requirements.txt
+npx tapediff replay tapes/paris.tape -- python agent.py
+npx tapediff diff tapes/paris.tape regressions/paris-v2.tape --no-color
+npx tapediff test tapes -- python agent.py "{tape}"
+```
+
+The example ships with recorded tapes, so nothing hits a real API. `paris-v2` is
+a deliberately broken version of the agent; see the
+[example README](examples/python-openai/README.md) for the walkthrough. There is
+also a [Node + Anthropic example](examples/ts-anthropic/README.md).
+
+## How it works
+
+tapediff starts a loopback HTTP proxy and points the child process's SDK base
+URLs at it. Record forwards requests and writes a redacted JSONL tape. Replay
+matches requests and serves the stored responses, including SSE streams, without
+contacting the provider. Your agent and its local tools still execute.
+
+```mermaid
+flowchart LR
+  A[Agent] --> P[tapediff proxy]
+  P -->|record| U[OpenAI / Anthropic]
+  U --> P
+  P -->|record| T[(Local tape)]
+  T -->|replay| P
+```
+
+Inspect the inputs, tool calls, results, and final answer with
+`tapediff show tapes/paris.tape`:
+
+![tapediff show output](docs/assets/show.svg)
+
+## Use it in CI
+
+For a Python agent with committed `tapes/`, `agent.py`, and `requirements.txt`:
+
+```yaml
+name: Agent snapshots
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - run: npx tapediff test tapes -- python agent.py "{tape}"
+```
+
+No API keys needed in CI. `test` fails when the agent makes a request that isn't
+in the tape, skips a recorded call, or exits non-zero. More in [docs/ci.md](docs/ci.md),
+including how to update tapes.
+
+## Supported
+
+| Provider  | Endpoint               | JSON | SSE streaming |
+| --------- | ---------------------- | ---- | ------------- |
+| OpenAI    | `/v1/chat/completions` | Yes  | Yes           |
+| OpenAI    | `/v1/responses`        | Yes  | Yes           |
+| Anthropic | `/v1/messages`         | Yes  | Yes           |
+
+Works with the official OpenAI and Anthropic SDKs (Python and Node) and anything
+else that reads `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`. If you pass a base URL
+to the client constructor yourself, that wins over the environment.
+
+OpenAI-compatible APIs work too: set `OPENAI_BASE_URL` to the provider's endpoint
+before recording. I've used it with Gemini's OpenAI endpoint
+(`https://generativelanguage.googleapis.com/v1beta/openai/`). Cost shows as
+unknown for models that aren't in the pricing table.
+
+LangChain and LlamaIndex haven't been tried yet, but should work since they use
+the official SDKs underneath.
+
+## Limitations
+
+- No HTTPS MITM. SDKs with hardcoded URLs won't be intercepted.
+- Providers without an OpenAI- or Anthropic-compatible API (e.g. native Gemini,
+  Bedrock) are not supported yet. Unknown routes under the supported
+  provider prefixes can be recorded generically, without a semantic timeline.
+- Tapes contain prompts and responses. Redaction is not anonymization;
+  [review tapes before committing](docs/tape-format.md#redaction).
+- Replay covers intercepted LLM traffic. Tools can still access the network,
+  write files, and introduce nondeterminism.
+- The [pricing table](src/pricing.json) is best-effort. Unknown models show
+  unknown cost; recorded cost is an estimate, not a bill.
+
+## Docs
+
+[CLI reference](docs/cli.md) · [Tape format](docs/tape-format.md) ·
+[Matching](docs/matching.md) · [CI](docs/ci.md) · [FAQ](docs/faq.md) ·
+[Diff JSON schema](docs/diff-json-schema.md) · [Roadmap](docs/roadmap.md)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, offline tests, smoke tests,
+and adding a provider. Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+Report vulnerabilities through [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE).

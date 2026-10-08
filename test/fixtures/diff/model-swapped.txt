@@ -1,0 +1,22 @@
+tapediff · baseline → candidate
+first divergence at step 2
+
+  input user "Weather and time in Paris?"
+- llm_call gpt-4.1 · HTTP 200
++ llm_call gpt-4o · HTTP 200
+  … 5 identical steps …
+- llm_call gpt-4.1 · HTTP 200
++ llm_call gpt-4o · HTTP 200
+
+tool calls: no change
+final answer: "It's 18°C and sunny in Paris." · unchanged
+
+calls   2 → 2 (no change)
+tokens  2.6k → 4.2k (+1.6k; +62%)
+cost    $0.0062 → $0.0100 (+$0.0038; +61%)
+latency 1.6s → 2.4s (+760ms; +46%)
+by model
+  gpt-4.1 · calls 2 → 0 · tokens 2.6k → 0 · $0.0062 → $0
+  gpt-4o · calls 0 → 2 · tokens 0 → 4.2k · $0 → $0.0100
+
+✗ behavior differs

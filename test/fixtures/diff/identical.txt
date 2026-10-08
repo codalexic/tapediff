@@ -1,0 +1,15 @@
+tapediff · baseline → candidate
+
+  … 8 identical steps …
+
+tool calls: no change
+final answer: "It's 18°C and sunny in Paris." · unchanged
+
+calls   2 → 2 (no change)
+tokens  2.6k → 2.6k (no change)
+cost    $0.0062 → $0.0062 (no change)
+latency 1.6s → 1.6s (no change)
+by model
+  gpt-4.1 · calls 2 → 2 · tokens 2.6k → 2.6k · $0.0062 → $0.0062
+
+✓ identical behavior

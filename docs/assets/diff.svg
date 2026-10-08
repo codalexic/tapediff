@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="576" viewBox="0 0 1080 576" role="img" aria-labelledby="title desc">
+<title id="title">tapediff diff tapes/paris.tape regressions/paris-v2.tape</title>
+<desc id="desc">Actual tapediff CLI output from the committed Python example tapes. Mock model data; costs and timings are illustrative, not benchmarks.</desc>
+<rect width="1080" height="576" rx="12" fill="#0d1117"/>
+<path d="M12 0h1056q12 0 12 12v28H0V12Q0 0 12 0" fill="#21262d"/>
+<circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="44" cy="20" r="6" fill="#febc2e"/><circle cx="66" cy="20" r="6" fill="#28c840"/>
+<g font-family="'DejaVu Sans Mono',Consolas,'Liberation Mono',monospace" font-size="16"><text x="24" y="70" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">$ tapediff diff tapes/paris.tape regressions/paris-v2.tape</tspan></text>
+<text x="24" y="92" xml:space="preserve"></text>
+<text x="24" y="114" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">tapediff · python-openai: paris → python-openai: paris_v2</tspan></text>
+<text x="24" y="136" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">first divergence at step 1</tspan></text>
+<text x="24" y="158" xml:space="preserve"></text>
+<text x="24" y="180" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">~ input system</tspan></text>
+<text x="24" y="202" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">  …before answering.{+ Double-check the forecast: call get_weather twice before answering.+}</tspan></text>
+<text x="24" y="224" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  … 8 identical steps …</tspan></text>
+<text x="24" y="246" xml:space="preserve"><tspan fill="#7ee787" font-weight="400" opacity="1">+ tool_call get_weather {&quot;city&quot;:&quot;Paris&quot;}</tspan></text>
+<text x="24" y="268" xml:space="preserve"><tspan fill="#7ee787" font-weight="400" opacity="1">+ tool_result get_weather {&quot;city&quot;:&quot;Paris&quot;,&quot;condition&quot;:&quot;sunny&quot;,&quot;temperature_c&quot;:22}</tspan></text>
+<text x="24" y="290" xml:space="preserve"><tspan fill="#7ee787" font-weight="400" opacity="1">+ llm_call gpt-4.1-nano · HTTP 200</tspan></text>
+<text x="24" y="312" xml:space="preserve"></text>
+<text x="24" y="334" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">+1 added tool call</tspan></text>
+<text x="24" y="356" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">final answer: &quot;Paris: sunny, 22 C. Your 100 USD is 92 EUR. Enjoy a walk by the Seine.&quot; · unchanged</tspan></text>
+<text x="24" y="378" xml:space="preserve"></text>
+<text x="24" y="400" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">calls   3 → 4 (+1; +33%)</tspan></text>
+<text x="24" y="422" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">tokens  375 → 500 (+125; +33%)</tspan></text>
+<text x="24" y="444" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">cost    $0.00006 → $0.00008 (+$0.00002; +33%)</tspan></text>
+<text x="24" y="466" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">latency 22ms → 19ms (-3ms; -13%)</tspan></text>
+<text x="24" y="488" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">by model</tspan></text>
+<text x="24" y="510" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">  gpt-4.1-nano · calls 3 → 4 · tokens 375 → 500 · $0.00006 → $0.00008</tspan></text>
+<text x="24" y="532" xml:space="preserve"></text>
+<text x="24" y="554" xml:space="preserve"><tspan fill="#ff7b72" font-weight="400" opacity="1">✗ behavior differs</tspan></text></g>
+</svg>

@@ -1,0 +1,65 @@
+[
+  {
+    "kind": "input",
+    "role": "user",
+    "content": "Weather and time in Paris?"
+  },
+  {
+    "kind": "llm_call",
+    "seq": 0,
+    "provider": "openai",
+    "model": "gpt-4.1",
+    "inputTokens": 1204,
+    "outputTokens": 88,
+    "costUsd": 0.003112,
+    "latencyMs": 820,
+    "status": 200
+  },
+  {
+    "kind": "text",
+    "content": "Checking. "
+  },
+  {
+    "kind": "tool_call",
+    "id": "call_weather",
+    "name": "get_weather",
+    "args": {
+      "city": "Paris"
+    }
+  },
+  {
+    "kind": "tool_call",
+    "id": "call_time",
+    "name": "get_time",
+    "args": {
+      "zone": "Europe/Paris"
+    }
+  },
+  {
+    "kind": "tool_result",
+    "id": "call_weather",
+    "content": "18°C, sunny",
+    "name": "get_weather"
+  },
+  {
+    "kind": "tool_result",
+    "id": "call_time",
+    "content": "12:00",
+    "name": "get_time"
+  },
+  {
+    "kind": "llm_call",
+    "seq": 1,
+    "provider": "openai",
+    "model": "gpt-4.1",
+    "inputTokens": 1204,
+    "outputTokens": 88,
+    "costUsd": 0.003112,
+    "latencyMs": 820,
+    "status": 200
+  },
+  {
+    "kind": "text",
+    "content": "It's 18°C and sunny in Paris."
+  }
+]

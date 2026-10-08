@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.cache/
+.venv/
+__pycache__/
+*.tsbuildinfo
+*.tape
+!test/fixtures/**/*.tape
+!examples/**/*.tape
+.env
+.env.*
+*.key

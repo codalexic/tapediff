@@ -1,0 +1,20 @@
+tapediff · baseline → candidate
+first divergence at step 6
+
+  … 5 identical steps …
++ tool_call get_calendar {"day":"today"}
+  tool_result get_weather "18°C, sunny"
+  tool_result get_time "12:00"
+  llm_call gpt-4.1 · HTTP 200
+
++1 added tool call
+final answer: "It's 18°C and sunny in Paris." · unchanged
+
+calls   2 → 2 (no change)
+tokens  2.6k → 2.6k (no change)
+cost    $0.0062 → $0.0062 (no change)
+latency 1.6s → 1.6s (no change)
+by model
+  gpt-4.1 · calls 2 → 2 · tokens 2.6k → 2.6k · $0.0062 → $0.0062
+
+✗ behavior differs

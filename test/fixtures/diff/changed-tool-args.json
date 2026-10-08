@@ -1,0 +1,267 @@
+{
+  "a": {
+    "createdAt": "2026-10-08T12:00:00.000Z",
+    "name": "baseline",
+    "path": "baseline.tape"
+  },
+  "b": {
+    "createdAt": "2026-10-08T12:00:00.000Z",
+    "name": "candidate",
+    "path": "candidate.tape"
+  },
+  "byModel": [
+    {
+      "a": {
+        "calls": 2,
+        "costUsd": 0.006224,
+        "tokens": 2584
+      },
+      "b": {
+        "calls": 2,
+        "costUsd": 0.006224,
+        "tokens": 2584
+      },
+      "model": "gpt-4.1"
+    }
+  ],
+  "finalText": {
+    "a": "It's 18°C and sunny in Paris.",
+    "b": "It's 18°C and sunny in Paris.",
+    "changed": false
+  },
+  "firstDivergence": {
+    "a": {
+      "args": {
+        "city": "Paris"
+      },
+      "id": "call_weather",
+      "kind": "tool_call",
+      "name": "get_weather"
+    },
+    "b": {
+      "args": {
+        "city": "Tokyo"
+      },
+      "id": "call_weather",
+      "kind": "tool_call",
+      "name": "get_weather"
+    },
+    "index": 3
+  },
+  "identical": false,
+  "ops": [
+    {
+      "a": {
+        "content": "Weather and time in Paris?",
+        "kind": "input",
+        "role": "user"
+      },
+      "aIndex": 0,
+      "b": {
+        "content": "Weather and time in Paris?",
+        "kind": "input",
+        "role": "user"
+      },
+      "bIndex": 0,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "costUsd": 0.003112,
+        "inputTokens": 1204,
+        "kind": "llm_call",
+        "latencyMs": 820,
+        "model": "gpt-4.1",
+        "outputTokens": 88,
+        "provider": "openai",
+        "seq": 0,
+        "status": 200
+      },
+      "aIndex": 1,
+      "b": {
+        "costUsd": 0.003112,
+        "inputTokens": 1204,
+        "kind": "llm_call",
+        "latencyMs": 820,
+        "model": "gpt-4.1",
+        "outputTokens": 88,
+        "provider": "openai",
+        "seq": 0,
+        "status": 200
+      },
+      "bIndex": 1,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "content": "Checking. ",
+        "kind": "text"
+      },
+      "aIndex": 2,
+      "b": {
+        "content": "Checking. ",
+        "kind": "text"
+      },
+      "bIndex": 2,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "args": {
+          "city": "Paris"
+        },
+        "id": "call_weather",
+        "kind": "tool_call",
+        "name": "get_weather"
+      },
+      "aIndex": 3,
+      "b": {
+        "args": {
+          "city": "Tokyo"
+        },
+        "id": "call_weather",
+        "kind": "tool_call",
+        "name": "get_weather"
+      },
+      "bIndex": 3,
+      "detail": {
+        "changes": [
+          {
+            "after": "Tokyo",
+            "before": "Paris",
+            "path": "/city"
+          }
+        ],
+        "kind": "json"
+      },
+      "type": "changed"
+    },
+    {
+      "a": {
+        "args": {
+          "zone": "Europe/Paris"
+        },
+        "id": "call_time",
+        "kind": "tool_call",
+        "name": "get_time"
+      },
+      "aIndex": 4,
+      "b": {
+        "args": {
+          "zone": "Europe/Paris"
+        },
+        "id": "call_time",
+        "kind": "tool_call",
+        "name": "get_time"
+      },
+      "bIndex": 4,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "content": "18°C, sunny",
+        "id": "call_weather",
+        "kind": "tool_result",
+        "name": "get_weather"
+      },
+      "aIndex": 5,
+      "b": {
+        "content": "18°C, sunny",
+        "id": "call_weather",
+        "kind": "tool_result",
+        "name": "get_weather"
+      },
+      "bIndex": 5,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "content": "12:00",
+        "id": "call_time",
+        "kind": "tool_result",
+        "name": "get_time"
+      },
+      "aIndex": 6,
+      "b": {
+        "content": "12:00",
+        "id": "call_time",
+        "kind": "tool_result",
+        "name": "get_time"
+      },
+      "bIndex": 6,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "costUsd": 0.003112,
+        "inputTokens": 1204,
+        "kind": "llm_call",
+        "latencyMs": 820,
+        "model": "gpt-4.1",
+        "outputTokens": 88,
+        "provider": "openai",
+        "seq": 1,
+        "status": 200
+      },
+      "aIndex": 7,
+      "b": {
+        "costUsd": 0.003112,
+        "inputTokens": 1204,
+        "kind": "llm_call",
+        "latencyMs": 820,
+        "model": "gpt-4.1",
+        "outputTokens": 88,
+        "provider": "openai",
+        "seq": 1,
+        "status": 200
+      },
+      "bIndex": 7,
+      "type": "equal"
+    },
+    {
+      "a": {
+        "content": "It's 18°C and sunny in Paris.",
+        "kind": "text"
+      },
+      "aIndex": 8,
+      "b": {
+        "content": "It's 18°C and sunny in Paris.",
+        "kind": "text"
+      },
+      "bIndex": 8,
+      "type": "equal"
+    }
+  ],
+  "schemaVersion": 1,
+  "toolCalls": {
+    "added": 0,
+    "changed": 1,
+    "removed": 0
+  },
+  "totals": {
+    "a": {
+      "calls": 2,
+      "costUsd": 0.006224,
+      "inputTokens": 2408,
+      "latencyMs": 1640,
+      "outputTokens": 176,
+      "tokens": 2584
+    },
+    "b": {
+      "calls": 2,
+      "costUsd": 0.006224,
+      "inputTokens": 2408,
+      "latencyMs": 1640,
+      "outputTokens": 176,
+      "tokens": 2584
+    },
+    "delta": {
+      "calls": 0,
+      "costUsd": 0,
+      "inputTokens": 0,
+      "latencyMs": 0,
+      "outputTokens": 0,
+      "tokens": 0
+    }
+  }
+}

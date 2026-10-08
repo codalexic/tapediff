@@ -1,0 +1,88 @@
+{
+  "name": "tapediff",
+  "version": "0.1.0",
+  "description": "Snapshot testing for AI agents: record, replay, and diff LLM traffic.",
+  "type": "module",
+  "bin": {
+    "tapediff": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "llm",
+    "agents",
+    "testing",
+    "snapshot",
+    "record",
+    "replay",
+    "openai",
+    "anthropic",
+    "claude",
+    "vcr"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "examples:record": "node examples/_mock/record.mjs",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts",
+    "docs:screenshot": "node scripts/screenshot.mjs",
+    "docs:help": "node scripts/docs-help.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test",
+    "test:package": "node scripts/test-package.mjs",
+    "benchmark:startup": "node scripts/benchmark-startup.mjs",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "commander": "14.0.3",
+    "cross-spawn": "7.0.6",
+    "diff": "9.0.0",
+    "ink": "6.0.1",
+    "picocolors": "1.1.1",
+    "react": "19.1.0",
+    "undici": "6.29.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.132.1",
+    "@eslint/js": "10.0.1",
+    "@types/cross-spawn": "6.0.6",
+    "@types/node": "26.6.4",
+    "@types/react": "19.1.8",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "ink-testing-library": "4.0.0",
+    "openai": "7.30.1",
+    "prettier": "3.9.9",
+    "tsup": "8.5.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "esbuild": "0.28.2"
+  },
+  "author": "Alex Tsiklauri <alex.tsiklauri.career@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codalexic/tapediff.git"
+  },
+  "homepage": "https://github.com/codalexic/tapediff#readme",
+  "bugs": {
+    "url": "https://github.com/codalexic/tapediff/issues"
+  }
+}

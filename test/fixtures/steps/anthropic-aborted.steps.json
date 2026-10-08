@@ -1,0 +1,27 @@
+[
+  {
+    "kind": "input",
+    "role": "user",
+    "content": "Weather and time in Paris?"
+  },
+  {
+    "kind": "llm_call",
+    "seq": 0,
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-5",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "costUsd": null,
+    "latencyMs": 820,
+    "status": 200
+  },
+  {
+    "kind": "text",
+    "content": "Partial answer"
+  },
+  {
+    "kind": "error",
+    "status": 200,
+    "message": "request aborted"
+  }
+]
