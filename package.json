@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "Snapshot testing for AI agents: record, replay, and diff LLM traffic.",
   "type": "module",
+  "exports": {
+    "./tools": {
+      "import": {
+        "types": "./dist/tools/index.d.ts",
+        "default": "./dist/tools/index.js"
+      },
+      "require": {
+        "types": "./dist/tools/index.d.cts",
+        "default": "./dist/tools/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "tapediff": "dist/cli.js"
   },

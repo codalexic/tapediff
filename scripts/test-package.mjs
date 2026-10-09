@@ -24,6 +24,7 @@ const env = {
   TAPEDIFF_ANTHROPIC_UPSTREAM: 'http://127.0.0.1:1',
   TAPEDIFF_REDACT: '',
   TAPEDIFF_TAPE: '',
+  TAPEDIFF_PROXY_URL: '',
   NO_COLOR: '1',
 };
 delete env.FORCE_COLOR;
@@ -51,11 +52,11 @@ try {
   for (const file of pack.files) {
     assert.match(
       file.path,
-      /^(?:dist\/[^/]+\.js|package\.json|README\.md|LICENSE|CHANGELOG\.md)$/,
+      /^(?:dist\/(?:[^/]+\.js|tools\/index\.(?:js|cjs|d\.ts|d\.cts))|package\.json|README\.md|LICENSE|CHANGELOG\.md)$/,
     );
     assert.doesNotMatch(
       file.path,
-      /test|fixture|example|coverage|\.tape|\.ts$/i,
+      /test|fixture|example|coverage|clients|\.tape/i,
     );
   }
   process.stdout.write(
@@ -75,6 +76,33 @@ try {
     '--no-fund',
     path.join(project, pack.filename),
     `@anthropic-ai/sdk@${sdk}`,
+  ]);
+  for (const [flag, source] of [
+    [
+      '--input-type=module',
+      `import { tool, wrapTool, TapediffToolMissError } from 'tapediff/tools'; if (await tool('x', 2, n => n + 1) !== 3 || await wrapTool('x', n => n)(4) !== 4 || !TapediffToolMissError) throw Error('tools');`,
+    ],
+    [
+      '--input-type=commonjs',
+      `const { tool, wrapTool, TapediffToolMissError } = require('tapediff/tools'); tool('x', 2, n => n + 1).then(n => { if (n !== 3 || !wrapTool || !TapediffToolMissError) throw Error('tools'); });`,
+    ],
+  ])
+    run('node', [flag, '-e', source]);
+  for (const file of ['types.mts', 'types.cts'])
+    await writeFile(
+      path.join(project, file),
+      `import { tool, wrapTool } from 'tapediff/tools'; const a: Promise<number> = tool('x', { n: 1 }, args => args.n); const b: Promise<string> = wrapTool('x', async (args: { s: string }) => args.s)({ s: 'a' }); void a; void b;`,
+    );
+  run('node', [
+    path.join(root, 'node_modules/typescript/bin/tsc'),
+    '--noEmit',
+    '--strict',
+    '--module',
+    'NodeNext',
+    '--target',
+    'ES2022',
+    'types.mts',
+    'types.cts',
   ]);
   for (const file of ['agent.mjs', 'tapes/paris.tape'])
     await copyFile(
@@ -112,7 +140,7 @@ try {
     );
   }
   process.stdout.write(
-    'Installed tarball: npx version, help, offline Node replay all exited 0.\n',
+    'Installed tarball: ESM/CJS tools, TypeScript declarations, npx version, help, offline Node replay all passed.\n',
   );
 } finally {
   assert.equal(path.dirname(path.resolve(project)), tempRoot);
