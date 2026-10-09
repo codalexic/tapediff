@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createTwoFilesPatch } from 'diff';
+import { nearestDiff } from './nearest-diff.js';
 import { z } from 'zod';
 import { canonicalJson } from '../tape/normalize.js';
 import { jsonSchema, type JsonValue, type ToolRecord } from '../tape/schema.js';
@@ -21,6 +21,7 @@ const finishSchema = z
   .object({
     id: z.string().min(1),
     result: jsonSchema.optional(),
+    undefined: z.literal(true).optional(),
     error: z
       .object({ name: z.string(), message: z.string() })
       .strict()
@@ -28,33 +29,25 @@ const finishSchema = z
   })
   .refine(
     (value) => (value.result !== undefined) !== (value.error !== undefined),
-  );
+  )
+  .refine((value) => !value.undefined || value.result === null);
 
 export function toolMissDiff(
   name: string,
   args: JsonValue,
   candidates: readonly ToolRecord[],
 ): string {
-  const pretty = (value: JsonValue) =>
-    `${JSON.stringify(JSON.parse(canonicalJson(redactBody(value, parseRedactPatterns(process.env.TAPEDIFF_REDACT)))) as JsonValue, null, 2)}\n`;
-  const actual = pretty(args);
-  const lines = new Set(actual.split('\n'));
-  let nearest: string | undefined;
-  let best = -1;
-  for (const candidate of candidates) {
-    if (candidate.name !== name) continue;
-    const expected = pretty(candidate.args);
-    const score = [...new Set(expected.split('\n'))].filter((line) =>
-      lines.has(line),
-    ).length;
-    if (score > best) {
-      nearest = expected;
-      best = score;
-    }
-  }
-  return nearest === undefined
-    ? `No unconsumed recorded tool with this name.\nIncoming args:\n${actual}`
-    : createTwoFilesPatch('recorded args', 'incoming args', nearest, actual);
+  return nearestDiff(
+    args,
+    candidates
+      .filter((candidate) => candidate.name === name)
+      .map((candidate) => candidate.args),
+    {
+      recorded: 'recorded args',
+      incoming: 'incoming args',
+      missing: 'No unconsumed recorded tool with this name.\nIncoming args:\n',
+    },
+  );
 }
 
 export function createToolHandler(options: {
@@ -125,7 +118,10 @@ export function createToolHandler(options: {
           action: 'replay',
           ...(source.error
             ? { error: source.error }
-            : { result: source.result }),
+            : {
+                result: source.result,
+                ...(source.undefined ? { undefined: true } : {}),
+              }),
         });
       }
       if (options.mode === 'replay') {
@@ -169,7 +165,9 @@ export function createToolHandler(options: {
       if (!options.writer) throw new Error('tool recording requires a writer');
       await options.writer.appendTool({
         ...entry.record,
-        ...(error ? { error } : { result }),
+        ...(error
+          ? { error }
+          : { result, ...(parsed.data.undefined ? { undefined: true } : {}) }),
         timing: {
           ...entry.record.timing,
           latencyMs: Math.max(0, performance.now() - entry.started),

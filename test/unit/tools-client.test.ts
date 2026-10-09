@@ -55,8 +55,8 @@ it.each(['network', 'http'])(
   },
 );
 
-it.each(['network', 'http'])(
-  'throws the finish transport failure after a successful tool (%s)',
+it.each(['network', 'http', 'json'])(
+  'returns the real result when finish fails (%s)',
   async (failure) => {
     vi.stubEnv('TAPEDIFF_PROXY_URL', 'http://localhost');
     const fetch = vi
@@ -66,15 +66,18 @@ it.each(['network', 'http'])(
       );
     const transport = new Error('network unavailable');
     if (failure === 'network') fetch.mockRejectedValueOnce(transport);
-    else fetch.mockResolvedValueOnce(new Response('', { status: 500 }));
+    else
+      fetch.mockResolvedValueOnce(
+        new Response('invalid JSON', {
+          status: failure === 'http' ? 400 : 200,
+        }),
+      );
     vi.stubGlobal('fetch', fetch);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = tool('success', {}, () => 42);
-    if (failure === 'network') await expect(result).rejects.toBe(transport);
-    else
-      await expect(result).rejects.toThrow(
-        'tapediff tool finish failed (HTTP 500)',
-      );
-    expect(warn).not.toHaveBeenCalled();
+    await expect(result).resolves.toBe(42);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      'tapediff: could not record result of tool success; the tape will be missing it',
+    );
   },
 );

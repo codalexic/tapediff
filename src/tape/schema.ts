@@ -81,6 +81,7 @@ export const toolRecordSchema = z
     args: jsonSchema,
     matchKey: z.string().regex(/^[a-f0-9]{64}$/),
     result: jsonSchema.optional(),
+    undefined: z.literal(true).optional(),
     error: z.object({ name: z.string(), message: z.string() }).optional(),
     timing: z.object({ startedAt: timestamp, latencyMs: nonnegative }),
     servedFrom: z.object({ seq: count }).optional(),
@@ -90,7 +91,10 @@ export const toolRecordSchema = z
     {
       message: 'expected exactly one of result or error',
     },
-  );
+  )
+  .refine((record) => !record.undefined || record.result === null, {
+    message: 'undefined requires a null result',
+  });
 export type ToolRecord = z.infer<typeof toolRecordSchema>;
 
 /** Syntax error distinguished from schema corruption when recovering a crash. */

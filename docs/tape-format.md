@@ -75,7 +75,11 @@ a crash before an exchange is flushed cannot recover that exchange.
 independent of finish order. The start/finish protocol token is never stored.
 `name` is nonempty; `args` and `result` are
 JSON values. Exactly one of `result` or `error: {name: string, message: string}`
-is present; errors never include stacks. Undefined results are stored as null.
+is present; errors never include stacks. A top-level JavaScript undefined result
+is stored as `"result": null, "undefined": true` and replays as undefined. The
+optional marker must be true and requires a null result; Python ignores it
+and returns None. Nested undefined object properties are omitted and undefined
+array elements become null, matching `JSON.stringify`.
 `matchKey` is SHA-256 of canonical JSON `{name,args}`, before redaction.
 `timing` has the same shape as exchanges, with latency measured start to finish.
 Optional `servedFrom: {seq}` identifies the source tool in a fork.

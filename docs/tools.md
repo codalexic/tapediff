@@ -27,8 +27,10 @@ Both helpers return a Promise of the function's awaited return type. Without
 return value and thrown error. This path performs only the environment lookup
 and the call, with the Promise required by the API; it does no JSON work or I/O.
 
-With the proxy enabled, arguments and results must be JSON data. `undefined`
-becomes `null` on tape, including nested values. Functions, BigInt, symbols,
+With the proxy enabled, arguments and results must be JSON data. A top-level
+`undefined` result replays as `undefined`. Nested values follow `JSON.stringify`:
+undefined object properties are dropped and undefined array elements become null.
+Functions, BigInt, symbols,
 cycles and non-finite numbers throw a clear TypeError without writing a tool
 record. A recorded success returns the original value; a replay returns a fresh
 JSON value. A recorded exception preserves the original thrown error in the
@@ -37,7 +39,9 @@ Replay throws an Error with that name and message and `tapediffReplayed = true`.
 A missing recording throws the exported `TapediffToolMissError`.
 
 If recording an error fails, the helper warns once and rethrows the original
-tool error. A failure to record a successful result throws the transport error.
+tool error. If the finish request fails after a successful tool, the helper
+prints `tapediff: could not record result of tool X; the tape will be missing it`
+and returns the real result. A missing recording fails later as a replay miss.
 Runtimes without `process` use the direct-call path.
 
 ## Python
@@ -67,6 +71,8 @@ unsupported values raise TypeError. Use string keys and interoperable JSON
 numbers when sharing tapes across languages.
 HTTP requests use a 30-second timeout. As in JavaScript, the original tool error
 wins if recording that error also fails, with a one-line stderr warning.
+A failed finish after success warns and returns the real result too. Python
+ignores the undefined marker and returns `None` for its null result.
 
 ## Modes and matching
 
@@ -93,7 +99,9 @@ Fork summaries report served and live tools separately from LLM calls.
 
 The child of record, replay, fork, or test receives
 `TAPEDIFF_PROXY_URL=http://127.0.0.1:<port>`. Without it, clients call directly.
-The reserved `/tapediff/v1/` routes are never forwarded upstream and never
+Only root `/tapediff/v1/` routes are reserved; `/openai/tapediff/v1/...` and
+`/anthropic/tapediff/v1/...` are ordinary provider traffic. Reserved routes are
+never forwarded upstream and never
 recorded as HTTP exchanges or counted as LLM calls or unknown traffic.
 
 1. Send `POST /tapediff/v1/tools/start` with JSON `{ "name": "get_weather",
@@ -109,13 +117,17 @@ recorded as HTTP exchanges or counted as LLM calls or unknown traffic.
    `{"id":"<opaque>","error":{"name":"Error","message":"..."}}`.
    Exactly one of result or error is required. Success returns HTTP 204 after
    the record is flushed. Never include a stack in the error object.
+   A JavaScript undefined result uses `{"id":"<opaque>","result":null,"undefined":true}`;
+   replay replies include the same `result` and `undefined` fields. The optional
+   marker must be `true` and requires a null result.
 
 Replay misses return HTTP 409 with
 `{"error":{"type":"tapediff_tool_miss","message":"..."}}`.
 Malformed JSON, missing fields, invalid methods or reserved paths, and unknown
 or duplicate finish IDs return HTTP 400 with `{"error":{"message":"..."}}`.
-Validation messages never echo the request body. Clients must surface protocol
-and transport failures rather than silently executing a tool on a replay miss.
+Validation messages never echo the request body. Start failures and replay
+misses throw without executing the tool. Finish failures warn and preserve
+the real result or original error.
 
 Concurrent starts are supported; finish order does not determine tape order.
 The record's `id` equals its integer `seq`; the opaque protocol token is never

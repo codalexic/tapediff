@@ -9,7 +9,6 @@ export class TapediffToolMissError extends Error {
 function json(value: unknown): string {
   try {
     return JSON.stringify(value ?? null, (_key, item: unknown) => {
-      if (item === undefined) return null;
       if (
         typeof item === 'function' ||
         typeof item === 'bigint' ||
@@ -60,6 +59,7 @@ export async function tool<A, R>(
     action: 'run' | 'replay';
     id: string;
     result?: Awaited<R>;
+    undefined?: true;
     error?: { name: string; message: string };
   };
   if (reply.action === 'replay') {
@@ -68,7 +68,7 @@ export async function tool<A, R>(
       error.name = reply.error.name;
       throw Object.assign(error, { tapediffReplayed: true });
     }
-    return reply.result as Awaited<R>;
+    return (reply.undefined ? undefined : reply.result) as Awaited<R>;
   }
   let result: Awaited<R>;
   try {
@@ -93,7 +93,19 @@ export async function tool<A, R>(
     }
     throw error;
   }
-  await post(base, 'finish', json({ id: reply.id, result: result ?? null }));
+  const body = json({
+    id: reply.id,
+    result: result ?? null,
+    ...(result === undefined ? { undefined: true } : {}),
+  });
+  try {
+    const response = await post(base, 'finish', body);
+    if (response.status !== 204) await response.json();
+  } catch {
+    console.warn(
+      `tapediff: could not record result of tool ${name}; the tape will be missing it`,
+    );
+  }
   return result;
 }
 

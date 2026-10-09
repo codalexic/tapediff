@@ -64,7 +64,11 @@ def tool(name, args, fn):
         except Exception:
             print("warning: tapediff could not record the tool error; rethrowing the original error", file=sys.stderr)
         raise
-    _post(base, "finish", {"id": reply["id"], "result": result})
+    _json(result)
+    try:
+        _post(base, "finish", {"id": reply["id"], "result": result})
+    except Exception:
+        print(f"tapediff: could not record result of tool {name}; the tape will be missing it", file=sys.stderr)
     return result
 
 

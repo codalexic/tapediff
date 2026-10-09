@@ -103,15 +103,20 @@ class ToolsTest(unittest.TestCase):
             self.assertIs(caught.exception, original)
             self.assertEqual(stderr.getvalue(), "warning: tapediff could not record the tool error; rethrowing the original error\n")
 
-    def test_successful_tool_exposes_finish_failure(self):
-        transport = OSError("transport")
+    def test_successful_tool_preserves_result_when_finish_fails(self):
+        for failure in [OSError("transport"), RuntimeError("HTTP 400"), json.JSONDecodeError("bad", "", 0)]:
+            with self.subTest(failure=type(failure)), patch.dict(os.environ, {"TAPEDIFF_PROXY_URL": "http://localhost"}), patch(
+                "tapediff_tools._post", side_effect=[{"action": "run", "id": "token"}, failure]
+            ), patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                self.assertEqual(tool("x", {}, lambda args: 42), 42)
+                self.assertEqual(stderr.getvalue(), "tapediff: could not record result of tool x; the tape will be missing it\n")
+
+    def test_undefined_marker_replays_as_none(self):
         with patch.dict(os.environ, {"TAPEDIFF_PROXY_URL": "http://localhost"}), patch(
-            "tapediff_tools._post", side_effect=[{"action": "run", "id": "token"}, transport]
-        ), patch("sys.stderr", new_callable=io.StringIO) as stderr:
-            with self.assertRaises(OSError) as caught:
-                tool("x", {}, lambda args: 42)
-            self.assertIs(caught.exception, transport)
-            self.assertEqual(stderr.getvalue(), "")
+            "tapediff_tools._post", return_value={"action": "replay", "result": None, "undefined": True}
+        ):
+            self.assertIsNone(tool("x", {}, lambda args: self.fail("ran")))
+
 
 
 if __name__ == "__main__":

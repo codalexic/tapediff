@@ -21,6 +21,7 @@ import { matchKey } from '../../src/tape/normalize.js';
 import { renderSteps } from '../../src/commands/show.js';
 import { toSteps } from '../../src/steps.js';
 import { detectProvider } from '../../src/providers/detect.js';
+import { fakeUpstream } from '../helpers/fake-upstream.js';
 import { header, exchange } from '../unit/tape-fixtures.js';
 import {
   root,
@@ -81,6 +82,70 @@ function source(
     timing: { startedAt: header.createdAt, latencyMs: 3 },
   });
 }
+
+it.each(['record', 'replay', 'fork'] as const)(
+  'reserves tool routes only at the root in %s',
+  async (mode) => {
+    const fake = await fakeUpstream({
+      responseBody: () => ({ provider: true }),
+    });
+    cleanup.push(() => fake.close());
+    const writer = await TapeWriter.open(path.join(dir, 'routes.tape'), header);
+    cleanup.push(() => writer.close());
+    const body = { name: 'weather', args: { city: 'Paris' } };
+    const provider = {
+      ...exchange,
+      endpoint: '/tapediff/v1/tools/start',
+      request: {
+        ...exchange.request,
+        method: 'POST',
+        path: '/tapediff/v1/tools/start',
+        body,
+      },
+      matchKey: matchKey('POST', '/tapediff/v1/tools/start', body),
+      response: {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: { provider: true },
+      },
+    };
+    const handler =
+      mode === 'record'
+        ? createRecordHandler(writer)
+        : mode === 'replay'
+          ? createReplayHandler([provider], { tools: [source()] }).handler
+          : createForkHandler([provider], writer, { tools: [source()] })
+              .handler;
+    const proxy = await createProxy({
+      mode,
+      handler,
+      env: { TAPEDIFF_OPENAI_UPSTREAM: fake.url },
+    });
+    cleanup.push(() => proxy.close());
+    const base = `http://127.0.0.1:${proxy.port}`;
+    const root = await fetch(`${base}/tapediff/v1/tools/start`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const reply = (await root.json()) as { action: string; id?: string };
+    expect(reply.action).toBe(mode === 'record' ? 'run' : 'replay');
+    if (mode === 'record')
+      await fetch(`${base}/tapediff/v1/tools/finish`, {
+        method: 'POST',
+        body: JSON.stringify({ id: reply.id, result: 1 }),
+      });
+    const response = await fetch(`${base}/openai/tapediff/v1/tools/start`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    expect(await response.json()).toEqual({ provider: true });
+    await proxy.close();
+    const data = await readTape(path.join(dir, 'routes.tape'));
+    expect(data.exchanges).toHaveLength(mode === 'replay' ? 0 : 1);
+    expect(data.tools).toHaveLength(mode === 'replay' ? 0 : 1);
+    expect(fake.requests).toHaveLength(mode === 'record' ? 1 : 0);
+  },
+);
 
 it('preserves direct values, error identity, and wrapper types without a proxy', async () => {
   vi.stubEnv('TAPEDIFF_PROXY_URL', '');
@@ -228,7 +293,7 @@ it.each(['function', 'bigint', 'cycle', 'symbol', 'infinity'])(
   },
 );
 
-it('rejects invalid args before sending start and preserves nested undefined as null', async () => {
+it('rejects invalid args before sending start and serializes nested undefined like JSON.stringify', async () => {
   const { tape } = await record();
   const fn = vi.fn(() => 1);
   await expect(tool('bad', { fn: () => 1 }, fn)).rejects.toThrow(
@@ -238,12 +303,60 @@ it('rejects invalid args before sending start and preserves nested undefined as 
   const result = { missing: undefined, array: [undefined] };
   expect(await tool('nested', null, () => result)).toBe(result);
   expect((await readTape(tape)).tools.map((record) => record.result)).toEqual([
-    { missing: null, array: [null] },
+    JSON.parse(JSON.stringify(result)),
   ]);
+  const replay = createReplayHandler([], {
+    tools: (await readTape(tape)).tools,
+  });
+  const proxy = await createProxy({ mode: 'replay', handler: replay.handler });
+  cleanup.push(() => proxy.close());
+  vi.stubEnv('TAPEDIFF_PROXY_URL', `http://127.0.0.1:${proxy.port}`);
+  const unused = vi.fn(() => result);
+  expect(await tool('nested', null, unused)).toEqual(
+    JSON.parse(JSON.stringify(result)),
+  );
+  expect(unused).not.toHaveBeenCalled();
+});
+
+it('round-trips a top-level undefined result through record, fork and replay', async () => {
+  const { tape } = await record();
+  expect(await tool('empty', {}, () => undefined)).toBeUndefined();
+  const data = await readTape(tape);
+  expect(data.tools[0]).toMatchObject({ result: null, undefined: true });
+  const writer = await TapeWriter.open(path.join(dir, 'fork.tape'), header);
+  cleanup.push(() => writer.close());
+  const fork = createForkHandler([], writer, { tools: data.tools });
+  const proxy = await createProxy({ mode: 'fork', handler: fork.handler });
+  cleanup.push(() => proxy.close());
+  vi.stubEnv('TAPEDIFF_PROXY_URL', `http://127.0.0.1:${proxy.port}`);
+  const fn = vi.fn(() => 'unexpected');
+  expect(await tool('empty', {}, fn)).toBeUndefined();
+  const forked = await readTape(path.join(dir, 'fork.tape'));
+  expect(forked.tools[0]).toMatchObject({
+    result: null,
+    undefined: true,
+    servedFrom: { seq: 0 },
+  });
+  const replay = createReplayHandler([], { tools: forked.tools });
+  const replayProxy = await createProxy({
+    mode: 'replay',
+    handler: replay.handler,
+  });
+  cleanup.push(() => replayProxy.close());
+  vi.stubEnv('TAPEDIFF_PROXY_URL', `http://127.0.0.1:${replayProxy.port}`);
+  expect(await tool('empty', {}, fn)).toBeUndefined();
+  expect(fn).not.toHaveBeenCalled();
 });
 
 it.each([
   { result: undefined },
+  { undefined: false },
+  { undefined: true, result: 1 },
+  {
+    undefined: true,
+    result: undefined,
+    error: { name: 'Error', message: 'bad' },
+  },
   { error: { name: 'Error', message: 'bad' } },
   { kind: 'other' },
   { args: undefined },

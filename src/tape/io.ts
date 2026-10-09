@@ -30,7 +30,7 @@ export class TapeWriter {
 
   /** Create a new tape and fsync its redacted header; never overwrite an existing tape. */
   static async open(
-    path: string,
+    path: string | FileHandle,
     header: TapeHeader,
     extraPatterns: readonly RedactPattern[] = parseRedactPatterns(
       process.env.TAPEDIFF_REDACT,
@@ -53,7 +53,8 @@ export class TapeWriter {
       },
       1,
     );
-    const file = await open(path, 'wx', 0o600);
+    const file =
+      typeof path === 'string' ? await open(path, 'wx', 0o600) : path;
     const writer = new TapeWriter(file, patterns);
     try {
       await writer.writeLine(clean);
