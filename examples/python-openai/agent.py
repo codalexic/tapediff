@@ -37,7 +37,7 @@ def convert_currency(amount, source, target):
     rate = {("USD", "EUR"): 0.92, ("USD", "JPY"): 150}[source, target]
     converted = round(amount * rate, 2)
     # Integral floats replay as ints through JSON; normalize to keep printed output identical.
-    return {"amount": int(converted) if converted.is_integer() else converted, "currency": target}
+    return {"amount": int(converted) if float(converted).is_integer() else converted, "currency": target}
 
 
 def main(prompt=PROMPT):
