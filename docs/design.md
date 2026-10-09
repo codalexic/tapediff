@@ -18,7 +18,7 @@ Exit codes: 0 ok, 1 diff found / test drift, 2 usage error, 3 replay miss, child
 
 - Local HTTP proxy on 127.0.0.1, random free port.
 - `record`/`replay` spawn the child with env vars pointing SDKs at the proxy:
-  `OPENAI_BASE_URL=http://127.0.0.1:<port>/openai/v1`, `OPENAI_API_BASE` (same), `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>/anthropic`.
+  `OPENAI_BASE_URL=http://127.0.0.1:<port>/openai/v1`, `OPENAI_API_BASE` (same), `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>/anthropic`, and `TAPEDIFF_PROXY_URL=http://127.0.0.1:<port>` for opt-in tool helpers.
 - Upstreams: default `https://api.openai.com` and `https://api.anthropic.com`; override via `TAPEDIFF_OPENAI_UPSTREAM` / `TAPEDIFF_ANTHROPIC_UPSTREAM` (tests use a local fake upstream). If the user already set `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`, use that as upstream.
 - Supported endpoints: OpenAI `/v1/chat/completions`, `/v1/responses`; Anthropic `/v1/messages`. Any other path is passed through (record mode) and recorded generically.
 - Streaming SSE: record raw chunks with relative timestamps (ms). Replay emits chunks instantly by default, or at recorded pace with `--pace recorded`.
@@ -27,8 +27,9 @@ Exit codes: 0 ok, 1 diff found / test drift, 2 usage error, 3 replay miss, child
 
 ## Tape format (`.tape`, JSONL, UTF-8)
 
-Line 1 header: `{"tapediff":1,"createdAt":ISO,"name"?,"command":[...],"tool":{"name":"tapediff","version":...}}`
-Each subsequent line = one exchange:
+Line 1 header: `{"tapediff":2,"createdAt":ISO,"name"?,"command":[...],"tool":{"name":"tapediff","version":...}}`
+Readers accept versions 1 and 2; writers always emit 2. Each subsequent line is
+an HTTP exchange (unchanged, with no kind field) or a `kind: "tool"` record:
 
 ```
 {"id":n,"seq":n,"provider":"openai"|"anthropic"|"unknown","endpoint":"/v1/messages",
@@ -40,6 +41,8 @@ Each subsequent line = one exchange:
  "model"?, "costUsd"?}
 ```
 
+- Tool records contain `{kind:"tool", id, seq, name, args, matchKey, result? | error?:{name,message}, timing:{startedAt,latencyMs}, servedFrom?:{seq}}`. Exactly one of result/error is present. Sequence is assigned at start; latency spans start to finish. Unfinished tools warn once and write nothing.
+- `readTape` returns `{header, exchanges, tools}` separately. Tools are strictly matched by SHA-256 of canonical `{name,args}`, with FIFO queues. Redaction covers args, results and error messages; hashes use unredacted inputs. Reserved `/tapediff/v1/` traffic never reaches providers or exchange records. See [the tool protocol](tools.md).
 - Validate with zod; tape version mismatch → clear error.
 - Redaction is mandatory: `authorization`, `x-api-key`, `api-key`, `openai-organization`, `cookie`, and anything matching `/key|token|secret/i` in headers is never written. Also scrub body strings matching `sk-[A-Za-z0-9_-]{16,}` and `sk-ant-...`. Extra patterns via `TAPEDIFF_REDACT` (comma-separated regexes).
 - Writes are append + flush per exchange so a crash still leaves a valid partial tape.
@@ -74,8 +77,9 @@ Each subsequent line = one exchange:
 Strict divergence matching switches permanently on the first LLM miss;
 `--at n` instead assigns the first n-1 LLM responses by request arrival order.
 Response serving and upstream recording share replay/record implementations.
-Optional version 1 provenance fields identify the source and served exchanges;
-diff ignores that provenance. Tools still execute live. See [Fork](fork.md) for
+Optional provenance fields identify the source and served exchanges and tools;
+diff ignores that provenance. Wrapped tools replay until the live boundary;
+unwrapped tools execute live. See [Fork](fork.md) for
 ordering, changed-prefix warnings, credentials, output and exit semantics.
 
 ## Pricing

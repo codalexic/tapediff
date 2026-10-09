@@ -9,9 +9,10 @@ replay reads a local tape. Your SDK and agent may have their own network behavio
 ## Is replay free and offline?
 
 The replay proxy does not contact a provider, so replayed LLM calls incur no API
-charge. Your process and tools still run. If a tool calls an external service,
-that service can cost money or require network access. Package installation is
-also separate from replay.
+charge. Your process and unwrapped tools still run; they may call external
+services that cost money or need network access. [Wrapped tools](tools.md)
+serve recorded results without execution. Package installation is separate
+from replay.
 
 ## Which SDKs have been checked?
 

@@ -16,7 +16,7 @@ tapediff fork before.tape --diff -- python my_agent.py
 ```
 
 Without `--at`, fork serves requests that match the tape using replay's strict
-[matching rules](matching.md). The first unmatched LLM request switches the run
+[matching rules](matching.md). The first unmatched LLM request or wrapped tool switches the run
 permanently to live traffic. If you change call #2, call #1 comes from the tape
 and #2 onward reach the provider, even if a later request would match. Stderr
 names the divergent call and shows a redacted request diff. Responses already
@@ -42,9 +42,12 @@ the edited program.
 - **Positional serving can hide prefix behavior changes.** An old response may
   no longer suit a changed prompt, model, or tool definition. Review the warnings
   and diff before relying on the result.
-- **Tools run live.** Fork restarts the command; it does not restore process or
-  tool state. Tools can access the network, write files, incur costs, and change
-  later requests. Tool replay is left for a later release.
+- **Unwrapped tools and local computation remain nondeterministic.** Fork
+  restarts the command without restoring process or tool state. Wrapped tools
+  serve strictly matching recorded JSON results until the run goes live. In
+  divergence mode a tool miss switches permanently; in positional mode a tool
+  miss runs live without switching. Once the LLM boundary is crossed, all tools
+  run live. Skipped side effects may matter to later steps; see [tools](tools.md).
 - **Arrival order determines position.** Concurrent requests may arrive in a
   different order than during recording. Divergence mode is safer for concurrent
   runs because distinct matching requests can arrive out of order.
@@ -63,8 +66,9 @@ without restoring graph state or skipping local computation.
 - **Output:** `runs/a.tape` defaults to `runs/a.fork.tape`; use `--out` to choose
   another path and `--force` to replace an existing output. `{tape}` and
   `TAPEDIFF_TAPE` point to the absolute source path.
-- **Provenance:** version 1 tapes add optional `forkedFrom` in the header and
-  `servedFrom.seq` on served exchanges. Recorded responses, usage, cost, and
+- **Provenance:** writers produce version 2 tapes with optional `forkedFrom` in
+  the header and `servedFrom.seq` on served exchanges and tools. Version 1 tapes
+  remain readable. Recorded responses, usage, cost, and
   latency are retained. `show` marks served calls; provenance does not affect
   diff equality. See the [tape format](tape-format.md) for fields and redaction.
 - **Credentials:** fork inherits real keys and record's upstream configuration;
@@ -72,7 +76,7 @@ without restoring graph state or skipping local computation.
   and continues for gateways that need no keys.
 - **Timing:** `--pace instant` is the default. `--pace recorded` uses recorded
   SSE offsets, without reproducing initial response latency.
-- **Summary:** stderr reports served/live LLM counts and estimated saved cost
+- **Summary:** stderr reports served/live LLM and tool counts and estimated saved cost
   and tokens, or `cost unknown` for unpriced calls. Unused calls warn only if
   the run never went live.
 - **Exit codes:** fork returns the child's code, 3 for proxy failure, or 2 for

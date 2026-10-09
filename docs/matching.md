@@ -38,7 +38,7 @@ Loose fallback ignores the method and body beyond model; it does not call a mode
    not semantic meaning; ties keep recorded order.
 2. Check the scenario, prompt, model, tool schema, SDK version, and generated
    values. A seed change matters in strict mode. Queries/headers do not.
-3. Make local tools and scenario selection deterministic. `{tape}` and
+3. Wrap local tools with the [tool helpers](tools.md) and keep scenario selection deterministic. `{tape}` and
    `TAPEDIFF_TAPE` can help select the correct input.
 4. For an intentional change, [re-record and review the diff](ci.md#updating-tapes).
    Keep the old baseline until review is complete. Do not hand-edit match keys.
@@ -47,3 +47,7 @@ Replay never falls back to the real provider. It warns about unused exchanges;
 `test` additionally fails on them. A passing replay with unused calls is therefore
 weaker than a passing test suite. Redaction can change response/tool values;
 see [tape format](tape-format.md#redaction) if secret-bearing history no longer matches.
+
+Wrapped tools use separate FIFO queues keyed by canonical `{name,args}` and
+always match strictly; `--loose` only affects HTTP exchanges. Tool misses and
+unused tool records also count toward `test` failures.

@@ -22,7 +22,7 @@
 <text x="24" y="400" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">calls   3 → 4 (+1; +33%)</tspan></text>
 <text x="24" y="422" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">tokens  375 → 500 (+125; +33%)</tspan></text>
 <text x="24" y="444" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">cost    $0.00006 → $0.00008 (+$0.00002; +33%)</tspan></text>
-<text x="24" y="466" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">latency 22ms → 19ms (-3ms; -13%)</tspan></text>
+<text x="24" y="466" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">latency 25ms → 25ms (-1ms; -3%)</tspan></text>
 <text x="24" y="488" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">by model</tspan></text>
 <text x="24" y="510" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">  gpt-4.1-nano · calls 3 → 4 · tokens 375 → 500 · $0.00006 → $0.00008</tspan></text>
 <text x="24" y="532" xml:space="preserve"></text>

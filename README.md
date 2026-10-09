@@ -35,7 +35,7 @@ npx tapediff test tapes -- python my_agent.py "{tape}"
 
 The diff exits **1** when behavior changes. For `test`, put reviewed baseline
 tapes in `tapes/` and have your agent select its scenario from the `{tape}` argument.
-Replay needs no provider key; your agent and its tools still run.
+Replay needs no provider key; your agent runs, and wrapped tools serve recorded results.
 
 ### Try it without an API key
 
@@ -58,7 +58,12 @@ also a [Node + Anthropic example](examples/ts-anthropic/README.md).
 tapediff starts a loopback HTTP proxy and points the child process's SDK base
 URLs at it. Record forwards requests and writes a redacted JSONL tape. Replay
 matches requests and serves the stored responses, including SSE streams, without
-contacting the provider. Your agent and its local tools still execute.
+contacting the provider. Your agent still executes. Opt into tool replay with
+`import { tool } from 'tapediff/tools'` and
+`await tool('get_weather', { city }, (args) => getWeather(args.city))`.
+Wrapped tools record JSON results and skip execution during replay and a fork's
+served prefix. Without the proxy environment variable, they call normally.
+Python has a vendorable helper too; see [recording tools](docs/tools.md).
 
 ```mermaid
 flowchart LR
@@ -95,7 +100,7 @@ npx tapediff record --out before.tape -- python my_agent.py
 npx tapediff fork before.tape --at 2 --diff -- python my_agent.py
 ```
 
-Omit `--at` to go live at the first LLM request mismatch. Tools still run live;
+Omit `--at` to go live at the first LLM or wrapped tool mismatch;
 see [fork semantics and prefix warnings](docs/fork.md).
 
 ## Use it in CI
@@ -154,15 +159,16 @@ the official SDKs underneath.
   provider prefixes can be recorded generically, without a semantic timeline.
 - Tapes contain prompts and responses. Redaction is not anonymization;
   [review tapes before committing](docs/tape-format.md#redaction).
-- Replay covers intercepted LLM traffic. Tools can still access the network,
-  write files, and introduce nondeterminism.
+- Wrapped tools replay recorded JSON results without execution. Unwrapped tools
+  still run live. Side effects that later steps depend on need care; see
+  [tool limitations](docs/tools.md#limitations).
 - The [pricing table](src/pricing.json) is best-effort. Unknown models show
   unknown cost; recorded cost is an estimate, not a bill.
 
 ## Docs
 
 [CLI reference](docs/cli.md) · [Tape format](docs/tape-format.md) ·
-[Matching](docs/matching.md) · [CI](docs/ci.md) · [FAQ](docs/faq.md) ·
+[Matching](docs/matching.md) · [Tools](docs/tools.md) · [CI](docs/ci.md) · [FAQ](docs/faq.md) ·
 [Diff JSON schema](docs/diff-json-schema.md) · [Roadmap](docs/roadmap.md)
 
 ## Contributing

@@ -1,14 +1,15 @@
-# Tape format v1
+# Tape format v2
 
 `.tape` is UTF-8 JSONL. The first physical line is a header; each later line is
-one exchange. The authoritative runtime schema is [src/tape/schema.ts](../src/tape/schema.ts).
+one HTTP exchange or tool record. Readers accept versions 1 and 2; writers emit 2.
+The authoritative runtime schema is [src/tape/schema.ts](../src/tape/schema.ts).
 Committed [example tapes](../examples/python-openai/tapes) are real files you can inspect.
 
 ## Header
 
 | Field       | Type / meaning                                                                      |
 | ----------- | ----------------------------------------------------------------------------------- |
-| `tapediff`  | Literal `1`, tape format version.                                                   |
+| `tapediff`  | `1` or `2`, tape format version; new recordings use `2`.                            |
 | `createdAt` | ISO datetime with timezone.                                                         |
 | `name`      | Optional recording label.                                                           |
 | `command`   | Array of child command/argument strings, redacted before writing.                   |
@@ -43,8 +44,9 @@ An exchange may also have `servedFrom: {seq: number}`, with a nonnegative source
 sequence number. Fork writes the incoming request and recomputes both match keys,
 assigns the new run's `id`/`seq` and `timing.startedAt`, and retains the source
 response, usage, model, cost and `timing.latencyMs`. Live exchanges omit
-`servedFrom`. These optional fields do not change tape version 1; old tapes
-read, replay and diff as before. See [fork semantics](fork.md).
+`servedFrom`. HTTP exchange records still have no `kind` field; version 1
+exchange lines remain valid in version 2. Old tapes read, replay and diff as
+before. See [fork semantics](fork.md).
 
 JSON bodies are reserialized on replay. SSE text and offsets are retained after
 redaction; redaction can regroup raw network chunks into event frames. This is
@@ -54,6 +56,36 @@ Writes are serialized, appended and fsynced per header/exchange. Exchanges can
 finish out of order; readers sort by `seq`. A final EOF-truncated exchange without
 a terminating newline is ignored with a warning. Other corruption fails validation;
 a crash before an exchange is flushed cannot recover that exchange.
+
+## Tool record
+
+```json
+{
+  "kind": "tool",
+  "id": 1,
+  "seq": 1,
+  "name": "get_weather",
+  "args": { "city": "Paris" },
+  "matchKey": "<64 lowercase hex characters>",
+  "result": { "temperature": 22 },
+  "timing": { "startedAt": "2026-10-09T00:00:00Z", "latencyMs": 3 }
+}
+```
+
+`id` equals `seq`, the nonnegative integer sequence of the start request,
+independent of finish order. The start/finish protocol token is never stored.
+`name` is nonempty; `args` and `result` are
+JSON values. Exactly one of `result` or `error: {name: string, message: string}`
+is present; errors never include stacks. Undefined results are stored as null.
+`matchKey` is SHA-256 of canonical JSON `{name,args}`, before redaction.
+`timing` has the same shape as exchanges, with latency measured start to finish.
+Optional `servedFrom: {seq}` identifies the source tool in a fork.
+
+Tools are durably appended on finish. Unfinished starts produce no record and
+one shutdown warning. Readers sort exchanges and tools separately by sequence
+and return `{header, exchanges, tools}`. Version 1 fixtures have an empty tools
+array. `show` merges the timelines; step diff continues to use only exchanges.
+See [tool semantics and protocol](tools.md).
 
 ## Redaction
 
@@ -71,6 +103,8 @@ Before writing, tapediff applies these protections to its tapes:
 - `TAPEDIFF_REDACT` adds comma-separated regex sources, applied globally.
   Empty or malformed regexes are ignored; built-in scrubbing remains active.
   Commas are separators even inside a regex. Use trusted, bounded patterns.
+- Tool arguments, results and error messages use these same body rules.
+  Their match keys are computed before redaction.
 - SSE JSON events receive property redaction, then string redaction across each
   whole event. A secret split across chunks within one event can be scrubbed;
   a secret split across separate delta events is not guaranteed to be detected.
@@ -88,7 +122,7 @@ miss on replay; use synthetic inputs when creating shareable fixtures.
 
 ## Versioning
 
-Zod validates records when reading and writing. Version `1` is the only supported
-tape version. A newer version asks you to upgrade; an older one asks you to
+Zod validates records when reading and writing. Versions `1` and `2` are supported;
+writers always emit `2`. Version `3` or newer asks you to upgrade; versions below `1` ask you to
 re-record. There is no tape migration command. Tape version and the
 [diff JSON `schemaVersion`](diff-json-schema.md) are independent contracts.
