@@ -1,0 +1,66 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`keeps request and tool miss-diff bytes stable (candidates=false) 1`] = `
+"No unconsumed recorded request for this endpoint.
+Incoming request:
+{
+  "body": {
+    "api_key": "[REDACTED]",
+    "nested": {
+      "a": 1,
+      "b": 2
+    },
+    "value": "new"
+  },
+  "method": "POST",
+  "path": "/v1/chat/completions"
+}
+"
+`;
+
+exports[`keeps request and tool miss-diff bytes stable (candidates=false) 2`] = `
+"No unconsumed recorded tool with this name.
+Incoming args:
+{
+  "api_key": "[REDACTED]",
+  "nested": {
+    "a": 1,
+    "b": 2
+  },
+  "value": "new"
+}
+"
+`;
+
+exports[`keeps request and tool miss-diff bytes stable (candidates=true) 1`] = `
+"===================================================================
+--- recorded request
++++ incoming request
+@@ -4,9 +4,9 @@
+     "nested": {
+       "a": 1,
+       "b": 2
+     },
+-    "value": "first"
++    "value": "new"
+   },
+   "method": "POST",
+   "path": "/v1/chat/completions"
+ }
+"
+`;
+
+exports[`keeps request and tool miss-diff bytes stable (candidates=true) 2`] = `
+"===================================================================
+--- recorded args
++++ incoming args
+@@ -3,6 +3,6 @@
+   "nested": {
+     "a": 1,
+     "b": 2
+   },
+-  "value": "first"
++  "value": "new"
+ }
+"
+`;

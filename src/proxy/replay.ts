@@ -1,12 +1,11 @@
-import { createToolHandler, isToolRoute } from './tools.js';
+import { createToolHandler } from './tools.js';
 import type { ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { createTwoFilesPatch } from 'diff';
+import { nearestDiff } from './nearest-diff.js';
 import { modelOf } from '../providers/usage.js';
 import { readTapeOrFail } from '../tape/read-or-fail.js';
 import {
-  canonicalJson,
   matchKey,
   normalizePath,
   normalizeRequest,
@@ -17,7 +16,7 @@ import {
   redactBody,
   redactHeaders,
 } from '../tape/redact.js';
-import type { Exchange, JsonValue, ToolRecord } from '../tape/schema.js';
+import type { Exchange, ToolRecord } from '../tape/schema.js';
 import { readRequestBody } from './body.js';
 import type { ProxyHandler } from './server.js';
 
@@ -29,43 +28,26 @@ export interface ReplayOptions {
 
 type Request = Pick<Exchange['request'], 'method' | 'path' | 'body'>;
 
-function prettyRequest(request: Request, mode: MatchMode): string {
-  const clean = redactBody(
-    normalizeRequest(request.method, request.path, request.body, mode),
-    parseRedactPatterns(process.env.TAPEDIFF_REDACT),
-  );
-  return `${JSON.stringify(JSON.parse(canonicalJson(clean)) as JsonValue, null, 2)}\n`;
-}
-
 /** Shared canonical lines; ties retain recorded order. Only compare unused calls. */
 export function replayMissDiff(
   request: Request,
   candidates: readonly Exchange[],
   mode: MatchMode = 'strict',
 ): string {
-  const actual = prettyRequest(request, mode);
-  const lines = new Set(actual.split('\n'));
-  let nearest: string | undefined;
-  let best = -1;
-  for (const exchange of candidates) {
-    if (exchange.endpoint !== normalizePath(request.path)) continue;
-    const expected = prettyRequest(exchange.request, mode);
-    const shared = [...new Set(expected.split('\n'))].filter((line) =>
-      lines.has(line),
-    ).length;
-    if (shared > best) {
-      best = shared;
-      nearest = expected;
-    }
-  }
-  return nearest === undefined
-    ? `No unconsumed recorded request for this endpoint.\nIncoming request:\n${actual}`
-    : createTwoFilesPatch(
-        'recorded request',
-        'incoming request',
-        nearest,
-        actual,
-      );
+  const normalized = (request: Request) =>
+    normalizeRequest(request.method, request.path, request.body, mode);
+  return nearestDiff(
+    normalized(request),
+    candidates
+      .filter((exchange) => exchange.endpoint === normalizePath(request.path))
+      .map((exchange) => normalized(exchange.request)),
+    {
+      recorded: 'recorded request',
+      incoming: 'incoming request',
+      missing:
+        'No unconsumed recorded request for this endpoint.\nIncoming request:\n',
+    },
+  );
 }
 
 /** Queues share consumption state so exact, seed-insensitive and fallback lookups cannot reuse a call. */
@@ -107,7 +89,7 @@ export function createReplayHandler(
     return undefined;
   };
   const handler: ProxyHandler = async (context) => {
-    if (isToolRoute(context.path)) return tools.handler(context);
+    if (context.reserved) return tools.handler(context);
     const { request, response, path, signal } = context;
     try {
       const { body } = await readRequestBody(request);

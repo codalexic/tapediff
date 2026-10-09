@@ -230,6 +230,11 @@ whitespace/key-order-only changes are labeled as formatting differences in text.
 Costs use adaptive precision so nonzero estimates never display as zero; exactly
 zero is `$0`, and unpriced calls display `cost unknown`.
 
+The text `show` total includes only numbered LLM calls, their tokens, cost and
+latency. Unknown-provider traffic is counted separately, for example
+`total: 2 calls · 200 tokens · $0.0010 · 1.0s (+1 other request)`. JSON totals keep
+their existing accounting.
+
 ### Interactive diff
 
 `--tui` requires TTY stdin and stdout; otherwise it warns and uses text output.

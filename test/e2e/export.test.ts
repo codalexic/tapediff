@@ -113,10 +113,10 @@ it('handles file creation and replacement failures with safe usage errors', asyn
     path.join(dir, 'missing', 'file'),
   ]);
   expect(missing.code).toBe(2);
-  expect(missing.stderr).toBe('error: cannot create export file\n');
+  expect(missing.stderr).toBe('error: cannot create output\n');
   const replace = await run(['export', tape, '--out', out, '--force']);
   expect(replace.code).toBe(2);
-  expect(replace.stderr).toBe('error: cannot replace export file\n');
+  expect(replace.stderr).toBe('error: cannot replace output\n');
 });
 
 it('replaces a symlink itself without truncating its target', async ({

@@ -1,6 +1,51 @@
 import { expect, it } from 'vitest';
 import { replayMissDiff } from '../../src/proxy/replay.js';
+import { toolMissDiff, toolMatchKey } from '../../src/proxy/tools.js';
+import type { JsonValue } from '../../src/tape/schema.js';
 import { exchange } from './tape-fixtures.js';
+
+it.each([false, true])(
+  'keeps request and tool miss-diff bytes stable (candidates=%s)',
+  (withCandidates) => {
+    const incoming = {
+      value: 'new',
+      nested: { a: 1, b: 2 },
+      api_key: 'private',
+    };
+    const candidates: JsonValue[] = withCandidates
+      ? [
+          { value: 'far', nested: { a: 9 } },
+          { value: 'first', nested: { b: 2, a: 1 }, api_key: 'private' },
+          { value: 'tied', nested: { a: 1, b: 2 }, api_key: 'private' },
+        ]
+      : [];
+    expect(
+      replayMissDiff(
+        { ...exchange.request, body: incoming },
+        candidates.map((body) => ({
+          ...exchange,
+          request: { ...exchange.request, body },
+        })),
+      ),
+    ).toMatchSnapshot();
+    expect(
+      toolMissDiff(
+        'lookup',
+        incoming,
+        candidates.map((args, seq) => ({
+          kind: 'tool',
+          id: seq,
+          seq,
+          name: 'lookup',
+          args,
+          result: null,
+          matchKey: toolMatchKey('lookup', args),
+          timing: exchange.timing,
+        })),
+      ),
+    ).toMatchSnapshot();
+  },
+);
 
 it('chooses the nearest request by shared canonical lines on the same endpoint', () => {
   const candidate = (body: typeof exchange.request.body) => ({

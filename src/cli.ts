@@ -10,9 +10,9 @@ try {
   else {
     // Only application-defined messages: never echo SDK/native error objects.
     const messages = new Set([
-      'output tape exists; use --force to overwrite',
-      'cannot create output tape',
-      'cannot replace output tape',
+      'output exists; use --force to overwrite',
+      'cannot create output',
+      'cannot replace output',
       'could not start child command',
       'cannot read tape: missing or invalid tape',
       'cannot find tapes',
@@ -20,9 +20,6 @@ try {
       'no .tape files found',
       'invalid export endpoint',
       'invalid OTLP export headers',
-      'cannot replace export file',
-      'cannot create export file',
-      'output file exists; use --force to overwrite',
     ]);
     process.stderr.write(
       `error: ${error instanceof Error && (messages.has(error.message) || isTapeVersionError(error)) ? error.message : 'command failed'}\n`,

@@ -36,8 +36,8 @@ export function diffRuns(a: Run, b: Run) {
   const withoutOrigin = (steps: readonly Step[]) =>
     steps.map((step) => {
       if (step.kind !== 'llm_call' || !step.servedFrom) return step;
-      const call = { ...step };
-      delete call.servedFrom;
+      const { servedFrom, ...call } = step;
+      void servedFrom;
       return call;
     });
   const ops = align(withoutOrigin(a.steps), withoutOrigin(b.steps));

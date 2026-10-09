@@ -1,4 +1,4 @@
-import { unlink } from 'node:fs/promises';
+import { createOutputFile } from './output-file.js';
 import { TapeWriter } from '../tape/io.js';
 import type { TapeHeader } from '../tape/schema.js';
 
@@ -7,27 +7,11 @@ export async function openOutputTape(
   header: TapeHeader,
   force = false,
 ): Promise<TapeWriter> {
-  if (force) {
-    try {
-      await unlink(out);
-    } catch (error) {
-      if (!(
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ))
-        throw new Error('cannot replace output tape', { cause: error });
-    }
-  }
-  let writer: TapeWriter;
+  const file = await createOutputFile(out, force);
   try {
-    writer = await TapeWriter.open(out, header);
+    return await TapeWriter.open(file, header);
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'EEXIST')
-      throw new Error('output tape exists; use --force to overwrite', {
-        cause: error,
-      });
-    throw new Error('cannot create output tape', { cause: error });
+    await file.close();
+    throw new Error('cannot create output', { cause: error });
   }
-  return writer;
 }

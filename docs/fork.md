@@ -51,6 +51,10 @@ the edited program.
 - **Arrival order determines position.** Concurrent requests may arrive in a
   different order than during recording. Divergence mode is safer for concurrent
   runs because distinct matching requests can arrive out of order.
+  An upload aborted before its body completes writes the same 502/aborted
+  exchange as record, but consumes no LLM position or source response and
+  does not trigger divergence. Its HTTP sequence number is retained; queued
+  requests continue in arrival order.
 - **Unknown routes do not advance the LLM count or trigger divergence.** They
   use strict matching until divergence; positional mode always matches them
   separately. An unprefixed unknown route that is not served from tape gets the

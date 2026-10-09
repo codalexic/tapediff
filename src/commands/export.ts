@@ -1,4 +1,4 @@
-import { unlink, writeFile } from 'node:fs/promises';
+import { createOutputFile } from './output-file.js';
 import { readTapeOrFail } from '../tape/read-or-fail.js';
 import { toOtlp, type ExportOptions } from '../export/otlp.js';
 
@@ -56,26 +56,13 @@ export async function exportCommand(
     : undefined;
   const body = `${JSON.stringify(toOtlp(await readTapeOrFail(tape), options))}\n`;
   if (options.out !== undefined) {
-    if (options.force) {
-      try {
-        await unlink(options.out);
-      } catch (error) {
-        if (!(
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'ENOENT'
-        ))
-          throw new Error('cannot replace export file', { cause: error });
-      }
-    }
+    const file = await createOutputFile(options.out, options.force);
     try {
-      await writeFile(options.out, body, { flag: 'wx', mode: 0o600 });
+      await file.writeFile(body);
     } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'EEXIST')
-        throw new Error('output file exists; use --force to overwrite', {
-          cause: error,
-        });
-      throw new Error('cannot create export file', { cause: error });
+      throw new Error('cannot create output', { cause: error });
+    } finally {
+      await file.close();
     }
   }
   if (endpoint) {
