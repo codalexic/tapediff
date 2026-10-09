@@ -31,6 +31,7 @@ Commands:
                                     continuation
   diff [options] <a.tape> <b.tape>  Compare the behavior of two recorded runs
   show [options] <tape>             Inspect a recorded tape
+  export [options] <tape>           Export a tape as OpenTelemetry traces
   test <dir|glob> <cmd...>          Replay each tape and check for drift
   help [command]                    display help for command
 ```
@@ -126,6 +127,27 @@ Options:
   -h, --help  display help for command
 ```
 
+### export
+
+```text
+Usage: tapediff export [options] <tape>
+
+Export a tape as OpenTelemetry traces
+
+Arguments:
+  tape                   tape to export
+
+Options:
+  --format <format>      export format (choices: "otlp-json", default:
+                         "otlp-json")
+  --out <file>           write to a file instead of stdout
+  --force                overwrite an existing output file
+  --endpoint <url>       POST traces to an OTLP/HTTP endpoint
+  --include-content      include sensitive input and output messages
+  --service-name <name>  override the resource service name
+  -h, --help             display help for command
+```
+
 ### test
 
 ```text
@@ -160,6 +182,7 @@ Commands:
                                     continuation
   diff [options] <a.tape> <b.tape>  Compare the behavior of two recorded runs
   show [options] <tape>             Inspect a recorded tape
+  export [options] <tape>           Export a tape as OpenTelemetry traces
   test <dir|glob> <cmd...>          Replay each tape and check for drift
   help [command]                    display help for command
 ```

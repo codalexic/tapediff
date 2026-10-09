@@ -82,6 +82,16 @@ diff ignores that provenance. Wrapped tools replay until the live boundary;
 unwrapped tools execute live. See [Fork](fork.md) for
 ordering, changed-prefix warnings, credentials, output and exit semantics.
 
+## OpenTelemetry export
+
+`tapediff export` reconstructs one deterministic trace from a tape, with an
+INTERNAL root, CLIENT model exchanges, and INTERNAL recorded tools. The pure
+`src/export/otlp.ts` mapper emits OTLP/JSON without an SDK or runtime dependency;
+`src/commands/export.ts` handles stdout, exclusive file output and explicit HTTP
+delivery. It reuses step output and SSE reassembly. Content capture is opt-in,
+and tool call IDs are linked only when unambiguous. Diff and replay remain local
+tape operations. See [the mapping and specification reference](otel.md).
+
 ## Pricing
 
 `src/pricing.json`: `{ "<model-prefix>": {"input": usdPer1M, "output": usdPer1M, "cacheRead"?, "cacheWrite"?} }`, longest-prefix match; unknown model → cost null, never crash.

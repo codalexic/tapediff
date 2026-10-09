@@ -103,6 +103,14 @@ npx tapediff fork before.tape --at 2 --diff -- python my_agent.py
 Omit `--at` to go live at the first LLM or wrapped tool mismatch;
 see [fork semantics and prefix warnings](docs/fork.md).
 
+## Export to OpenTelemetry
+
+Open a recorded run in Jaeger, Grafana Tempo, Phoenix, Langfuse, or another OTLP backend.
+Run `tapediff export run.tape --endpoint http://localhost:4318` to send it,
+or `tapediff export run.tape --out traces.json` to save OTLP/JSON.
+Message content is off by default; opt in with `--include-content` after reviewing the tape.
+See [export mapping, privacy, and a Jaeger walkthrough](docs/otel.md); diff stays in tapediff.
+
 ## Use it in CI
 
 For a Python agent with committed `tapes/`, `agent.py`, and `requirements.txt`:

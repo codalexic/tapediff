@@ -11,6 +11,7 @@ const sections = [
   'fork',
   'diff',
   'show',
+  'export',
   'test',
   'help',
 ]
