@@ -16,6 +16,30 @@ const call: Step = {
   status: 200,
 };
 
+it.each([1, 2])(
+  'counts %i other requests separately from LLM totals',
+  (others) => {
+    const steps: Step[] = [
+      call,
+      ...Array.from({ length: others }, () => ({
+        ...call,
+        provider: 'unknown' as const,
+        inputTokens: 9999,
+        costUsd: 99,
+      })),
+      { ...call, seq: 3 },
+    ];
+    const text = renderSteps(steps, 200);
+    expect(text).toMatchSnapshot();
+    expect(text).toContain('#2  gpt-4.1');
+    expect(text).not.toContain('#3');
+    expect(text).toContain(
+      `total: 2 calls · 2.6k tokens · $0.0062 · 1.6s (+${others} other request${others === 1 ? '' : 's'})`,
+    );
+    expect(stepTotals(steps).calls).toBe(2 + others);
+  },
+);
+
 it('places tools after the first matching preceding call, with canonical args and sequence fallback', () => {
   const toolCall = (
     id: string,

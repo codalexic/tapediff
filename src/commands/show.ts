@@ -115,9 +115,19 @@ export function renderSteps(
   }
   if (hasFinal) line(`✓ final: ${displayContent(finalText)}`, colors.green);
   showTools(Infinity);
-  const totals = stepTotals(steps);
+  const others = steps.filter(
+    (step) => step.kind === 'llm_call' && step.provider === 'unknown',
+  ).length;
+  const totals = stepTotals(
+    steps.filter(
+      (step) => step.kind !== 'llm_call' || step.provider !== 'unknown',
+    ),
+  );
+  const suffix = others
+    ? ` (+${others} other request${others === 1 ? '' : 's'})`
+    : '';
   line(
-    `total: ${totals.calls} calls · ${tokens(totals.tokens)} tokens · ${money(totals.costUsd)} · ${latency(totals.latencyMs)}`,
+    `total: ${totals.calls} calls · ${tokens(totals.tokens)} tokens · ${money(totals.costUsd)} · ${latency(totals.latencyMs)}${suffix}`,
     colors.dim,
   );
   return `${lines.join('\n')}\n`;

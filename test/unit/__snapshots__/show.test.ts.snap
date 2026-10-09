@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`counts 1 other requests separately from LLM totals 1`] = `
+"#1  gpt-4.1  1,204→88 tok  $0.0031  820ms
+unknown  gpt-4.1  9,999→88 tok  $99.0000  820ms
+#2  gpt-4.1  1,204→88 tok  $0.0031  820ms
+total: 2 calls · 2.6k tokens · $0.0062 · 1.6s (+1 other request)
+"
+`;
+
+exports[`counts 2 other requests separately from LLM totals 1`] = `
+"#1  gpt-4.1  1,204→88 tok  $0.0031  820ms
+unknown  gpt-4.1  9,999→88 tok  $99.0000  820ms
+unknown  gpt-4.1  9,999→88 tok  $99.0000  820ms
+#2  gpt-4.1  1,204→88 tok  $0.0031  820ms
+total: 2 calls · 2.6k tokens · $0.0062 · 1.6s (+2 other requests)
+"
+`;
