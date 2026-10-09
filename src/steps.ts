@@ -162,6 +162,47 @@ function responseError(
   return undefined;
 }
 
+/** Inspect an exchange once, sharing provider extraction and stream reassembly. */
+export function inspectExchange(exchange: Exchange) {
+  const events = streamEvents(exchange.response.sse ?? []);
+  let metadata: Metadata = { model: modelOf(exchange.request.body) };
+  const extract =
+    exchange.provider === 'openai' ? extractOpenAI : extractAnthropic;
+  if (exchange.provider !== 'unknown')
+    for (const value of [exchange.response.body, ...events])
+      metadata = extract(value, metadata);
+  const model = exchange.model ?? metadata.model ?? null;
+  const usage = exchange.usage ?? metadata.usage;
+  const call: Extract<Step, { kind: 'llm_call' }> = {
+    kind: 'llm_call',
+    ...(exchange.servedFrom ? { servedFrom: exchange.servedFrom } : {}),
+    seq: exchange.seq,
+    provider: exchange.provider,
+    model,
+    inputTokens: usage?.inputTokens ?? 0,
+    outputTokens: usage?.outputTokens ?? 0,
+    costUsd:
+      exchange.costUsd !== undefined
+        ? exchange.costUsd
+        : costUsd(model ?? undefined, usage, exchange.provider),
+    latencyMs: exchange.timing.latencyMs,
+    status: exchange.response.status,
+  };
+  return {
+    events,
+    usage,
+    call,
+    output:
+      exchange.provider !== 'unknown' && exchange.response.status < 400
+        ? responseSteps(exchange, events)
+        : [],
+    error:
+      exchange.provider === 'unknown'
+        ? undefined
+        : responseError(exchange, events),
+  };
+}
+
 /** Convert a run to provider-neutral steps without mutating exchanges or their bodies. */
 export function toSteps(exchanges: Exchange[]): Step[] {
   const steps: Step[] = [];
@@ -186,34 +227,11 @@ export function toSteps(exchanges: Exchange[]): Step[] {
         steps.push({ ...step, ...(name === undefined ? {} : { name }) });
       }
     }
-    const events = streamEvents(exchange.response.sse ?? []);
-    let metadata: Metadata = { model: modelOf(exchange.request.body) };
-    const extract =
-      exchange.provider === 'openai' ? extractOpenAI : extractAnthropic;
-    if (exchange.provider !== 'unknown')
-      for (const value of [exchange.response.body, ...events])
-        metadata = extract(value, metadata);
-    const model = exchange.model ?? metadata.model ?? null;
-    const usage = exchange.usage ?? metadata.usage;
-    steps.push({
-      kind: 'llm_call',
-      ...(exchange.servedFrom ? { servedFrom: exchange.servedFrom } : {}),
-      seq: exchange.seq,
-      provider: exchange.provider,
-      model,
-      inputTokens: usage?.inputTokens ?? 0,
-      outputTokens: usage?.outputTokens ?? 0,
-      costUsd:
-        exchange.costUsd !== undefined
-          ? exchange.costUsd
-          : costUsd(model ?? undefined, usage, exchange.provider),
-      latencyMs: exchange.timing.latencyMs,
-      status: exchange.response.status,
-    });
+    const { call, output, error } = inspectExchange(exchange);
+    steps.push(call);
     if (exchange.provider === 'unknown') continue;
-    const error = responseError(exchange, events);
     if (exchange.response.status < 400) {
-      for (const step of responseSteps(exchange, events)) {
+      for (const step of output) {
         if (step.kind === 'tool_call' && step.id) names.set(step.id, step.name);
         steps.push(step);
       }
