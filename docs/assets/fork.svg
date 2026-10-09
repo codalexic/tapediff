@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1168" height="774" viewBox="0 0 1168 774" role="img" aria-labelledby="title desc">
+<title id="title">tapediff fork tapes/trip.tape --at 4 --diff -- python agent_v2.py</title>
+<desc id="desc">Actual tapediff CLI output from the Python examples. Mock model data; costs and timings are illustrative, not benchmarks.</desc>
+<rect width="1168" height="774" rx="12" fill="#0d1117"/>
+<path d="M12 0h1144q12 0 12 12v28H0V12Q0 0 12 0" fill="#21262d"/>
+<circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="44" cy="20" r="6" fill="#febc2e"/><circle cx="66" cy="20" r="6" fill="#28c840"/>
+<g font-family="'DejaVu Sans Mono',Consolas,'Liberation Mono',monospace" font-size="16"><text x="24" y="70" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">$ tapediff fork tapes/trip.tape --at 4 --diff -- python agent_v2.py</tspan></text>
+<text x="24" y="92" xml:space="preserve"></text>
+<text x="24" y="114" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">draft: Paris: sunny, 22 C. Budget: 92 EUR. Walk by the Seine.</tspan></text>
+<text x="24" y="136" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">review: PASS: the plan matches 22 C and the 92 EUR budget.</tspan></text>
+<text x="24" y="158" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">fork: 3 calls + 2 tools from tape · 2 live calls · 0 live tools · saved $0.00006 (375 tokens) → tapes\trip.fork.tape</tspan></text>
+<text x="24" y="180" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">tapediff · tapes/trip.tape → tapes\trip.fork.tape</tspan></text>
+<text x="24" y="202" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">first divergence at step 11</tspan></text>
+<text x="24" y="224" xml:space="preserve"></text>
+<text x="24" y="246" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  … 10 identical steps …</tspan></text>
+<text x="24" y="268" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">~ input system</tspan></text>
+<text x="24" y="290" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">  …the weather number as [-Fahrenheit-]{+Celsius+}. Keep the budget in EUR.</tspan></text>
+<text x="24" y="312" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  input user &quot;Plan a day in Paris with a budget of 100 USD in EUR.\nFacts: {\&quot;get_weather\&quot;: {\&quot;cit…</tspan></text>
+<text x="24" y="334" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  llm_call gpt-4.1-nano · HTTP 200</tspan></text>
+<text x="24" y="356" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">~ text</tspan></text>
+<text x="24" y="378" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">  Paris: sunny, 22 [-F-]{+C+}. Budget: 92 EUR. Walk by the Seine.</tspan></text>
+<text x="24" y="400" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  input system &quot;Review the day plan against the facts. Flag incorrect units or budgets.&quot;</tspan></text>
+<text x="24" y="422" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">~ input user</tspan></text>
+<text x="24" y="444" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">  …Paris: sunny, 22 [-F-]{+C+}. Budget: 92 EUR. Walk by the Seine.</tspan></text>
+<text x="24" y="466" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="0.7">  llm_call gpt-4.1-nano · HTTP 200</tspan></text>
+<text x="24" y="488" xml:space="preserve"></text>
+<text x="24" y="510" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">tool calls: no change</tspan></text>
+<text x="24" y="532" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">final answer</tspan></text>
+<text x="24" y="554" xml:space="preserve"><tspan fill="#e3b341" font-weight="400" opacity="1">  [-FAIL-]{+PASS+}: the [-forecast-]{+plan+} [-is-]{+matches+} 22 C[-,-] [-not-]{+and+} [-22-]{+the…</tspan></text>
+<text x="24" y="576" xml:space="preserve"></text>
+<text x="24" y="598" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">calls   5 → 5 (no change)</tspan></text>
+<text x="24" y="620" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">tokens  625 → 625 (no change)</tspan></text>
+<text x="24" y="642" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">cost    $0.0001 → $0.0001 (no change)</tspan></text>
+<text x="24" y="664" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">latency 43ms → 59ms (+16ms; +38%)</tspan></text>
+<text x="24" y="686" xml:space="preserve"><tspan fill="#e6edf3" font-weight="700" opacity="1">by model</tspan></text>
+<text x="24" y="708" xml:space="preserve"><tspan fill="#e6edf3" font-weight="400" opacity="1">  gpt-4.1-nano · calls 5 → 5 · tokens 625 → 625 · $0.0001 → $0.0001</tspan></text>
+<text x="24" y="730" xml:space="preserve"></text>
+<text x="24" y="752" xml:space="preserve"><tspan fill="#ff7b72" font-weight="400" opacity="1">✗ behavior differs</tspan></text></g>
+</svg>
