@@ -21,10 +21,15 @@ describe('tape IO', () => {
   it('writes and reads a header and exchange, including before the writer closes', async () => {
     const writer = await TapeWriter.open(tapePath, header);
     try {
-      expect(await readTape(tapePath)).toEqual({ header, exchanges: [] });
+      expect(await readTape(tapePath)).toEqual({
+        header: { ...header, tapediff: 2 },
+        tools: [],
+        exchanges: [],
+      });
       await writer.appendExchange(exchange);
       expect(await readTape(tapePath)).toEqual({
-        header,
+        header: { ...header, tapediff: 2 },
+        tools: [],
         exchanges: [exchange],
       });
     } finally {
@@ -33,7 +38,11 @@ describe('tape IO', () => {
     const raw = await readFile(tapePath, 'utf8');
     expect(raw.endsWith('\n')).toBe(true);
     expect(raw.split('\n')).toHaveLength(3);
-    expect(await readTape(tapePath)).toEqual({ header, exchanges: [exchange] });
+    expect(await readTape(tapePath)).toEqual({
+      header: { ...header, tapediff: 2 },
+      tools: [],
+      exchanges: [exchange],
+    });
     await writer.close();
     await expect(writer.appendExchange(exchange)).rejects.toThrow(
       'tape writer is closed',
@@ -142,6 +151,7 @@ describe('tape IO', () => {
       await writeFile(tapePath, `${fixtureText.trimEnd()}\n${tail}`);
       expect(await readTape(tapePath)).toEqual({
         header,
+        tools: [],
         exchanges: [exchange],
       });
       expect(warn).toHaveBeenCalledExactlyOnceWith(
@@ -158,6 +168,7 @@ describe('tape IO', () => {
       await writeFile(tapePath, text);
       expect(await readTape(tapePath)).toEqual({
         header,
+        tools: [],
         exchanges: [exchange],
       });
     }
@@ -186,7 +197,7 @@ describe('tape IO', () => {
     for (const text of [
       '',
       '{"tapediff":',
-      JSON.stringify({ ...header, tapediff: 2 }),
+      JSON.stringify({ ...header, tapediff: 3 }),
     ]) {
       await writeFile(tapePath, text);
       await expect(readTape(tapePath)).rejects.toThrow('tape line 1');

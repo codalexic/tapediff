@@ -2,11 +2,13 @@ import { open, readFile } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import {
   exchangeSchema,
+  toolRecordSchema,
+  TAPE_VERSION,
   parseTapeLine,
   TapeSyntaxError,
   validateTapeRecord,
 } from './schema.js';
-import type { Exchange, TapeHeader } from './schema.js';
+import type { Exchange, TapeHeader, ToolRecord } from './schema.js';
 import {
   parseRedactPatterns,
   redactBody,
@@ -38,6 +40,7 @@ export class TapeWriter {
     const clean = validateTapeRecord(
       {
         ...header,
+        tapediff: TAPE_VERSION,
         command: redactBody(header.command, patterns),
         ...(header.forkedFrom
           ? {
@@ -105,13 +108,48 @@ export class TapeWriter {
     return write;
   }
 
+  /** Redact and durably append a tool, snapshotting it before enqueueing. */
+  appendTool(record: ToolRecord): Promise<void> {
+    if (this.closing) {
+      this.warnAppendFailure();
+      return Promise.reject(new Error('tape writer is closed'));
+    }
+    let clean: ToolRecord;
+    try {
+      record = toolRecordSchema.parse(record);
+      clean = toolRecordSchema.parse({
+        ...record,
+        name: redactBody(record.name, this.patterns),
+        args: redactBody(record.args, this.patterns),
+        ...(record.result === undefined
+          ? {}
+          : { result: redactBody(record.result, this.patterns) }),
+        ...(record.error
+          ? { error: redactBody(record.error, this.patterns) }
+          : {}),
+      });
+    } catch {
+      this.warnAppendFailure();
+      return Promise.reject(new Error('cannot append invalid tape tool'));
+    }
+    this.pending = this.pending
+      .then(() => this.writeLine(clean))
+      .catch((error: unknown) => {
+        this.warnAppendFailure();
+        throw error;
+      });
+    return this.pending;
+  }
+
   /** Finish queued writes and close the handle, even after a failed append. */
   close(): Promise<void> {
     this.closing ??= this.pending.finally(() => this.file.close());
     return this.closing;
   }
 
-  private async writeLine(value: TapeHeader | Exchange): Promise<void> {
+  private async writeLine(
+    value: TapeHeader | Exchange | ToolRecord,
+  ): Promise<void> {
     await this.file.writeFile(`${JSON.stringify(value)}\n`, 'utf8');
     await this.file.sync();
   }
@@ -128,18 +166,19 @@ export class TapeWriter {
 /** Read and validate every physical line, recovering only a final EOF-truncated exchange. */
 export async function readTape(
   path: string,
-): Promise<{ header: TapeHeader; exchanges: Exchange[] }> {
+): Promise<{ header: TapeHeader; exchanges: Exchange[]; tools: ToolRecord[] }> {
   const text = await readFile(path, 'utf8');
   const lines = text.split('\n');
   const terminated = text.endsWith('\n');
   if (terminated) lines.pop();
   const header = parseTapeLine(lines[0] ?? '', 1);
   const exchanges: Exchange[] = [];
+  const tools: ToolRecord[] = [];
   for (let index = 1; index < lines.length; index++) {
     try {
       const record = parseTapeLine(lines[index]!, index + 1);
-      // Line 1 is handled above; the parser validates every other line as an exchange.
-      exchanges.push(record as Exchange);
+      if ('kind' in record) tools.push(record);
+      else exchanges.push(record as Exchange);
     } catch (error) {
       if (
         !terminated &&
@@ -154,5 +193,6 @@ export async function readTape(
     }
   }
   exchanges.sort((a, b) => a.seq - b.seq);
-  return { header, exchanges };
+  tools.sort((a, b) => a.seq - b.seq);
+  return { header, exchanges, tools };
 }

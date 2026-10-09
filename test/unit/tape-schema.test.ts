@@ -11,7 +11,7 @@ import { exchange, fixturePath, header } from './tape-fixtures.js';
 
 describe('tape schemas', () => {
   it('round-trips the version 1 header and full exchange', () => {
-    expect(TAPE_VERSION).toBe(1);
+    expect(TAPE_VERSION).toBe(2);
     expect(parseTapeLine(JSON.stringify(header), 1)).toEqual(header);
     expect(parseTapeLine(JSON.stringify(exchange), 2)).toEqual(exchange);
   });
@@ -28,8 +28,8 @@ describe('tape schemas', () => {
 
   it('explains newer and older tape versions', () => {
     expect(() =>
-      parseTapeLine(JSON.stringify({ ...header, tapediff: 2 }), 1),
-    ).toThrow('tape version 2 is newer than this tapediff supports; upgrade');
+      parseTapeLine(JSON.stringify({ ...header, tapediff: 3 }), 1),
+    ).toThrow('tape version 3 is newer than this tapediff supports; upgrade');
     expect(() =>
       parseTapeLine(JSON.stringify({ ...header, tapediff: 0 }), 1),
     ).toThrow('tape version 0 is older than this tapediff supports; re-record');

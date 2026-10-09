@@ -22,7 +22,7 @@ it.each(['show', 'diff', 'replay'])(
       expect(missing.stderr).toBe(
         'error: cannot read tape: missing or invalid tape\n',
       );
-      for (const tapediff of [-1, 0, 2]) {
+      for (const tapediff of [-1, 0, 3]) {
         await writeFile(tape, JSON.stringify({ ...header, tapediff }) + '\n');
         const result = await run(args);
         expect(result.code).toBe(2);

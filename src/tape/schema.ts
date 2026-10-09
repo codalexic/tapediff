@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const TAPE_VERSION = 1;
+export const TAPE_VERSION = 2;
 export const providerSchema = z.enum(['openai', 'anthropic', 'unknown']);
 export type Provider = z.infer<typeof providerSchema>;
 export const jsonSchema = z.json();
@@ -13,7 +13,7 @@ const headers = z.record(z.string(), z.string());
 
 /** First JSONL record identifying the tape format and recording command. */
 export const tapeHeaderSchema = z.object({
-  tapediff: z.literal(TAPE_VERSION),
+  tapediff: z.union([z.literal(1), z.literal(TAPE_VERSION)]),
   createdAt: timestamp,
   name: z.string().optional(),
   command: z.array(z.string()),
@@ -72,6 +72,27 @@ export const exchangeSchema = z.object({
 });
 export type Exchange = z.infer<typeof exchangeSchema>;
 
+export const toolRecordSchema = z
+  .object({
+    kind: z.literal('tool'),
+    id: count,
+    seq: count,
+    name: z.string().min(1),
+    args: jsonSchema,
+    matchKey: z.string().regex(/^[a-f0-9]{64}$/),
+    result: jsonSchema.optional(),
+    error: z.object({ name: z.string(), message: z.string() }).optional(),
+    timing: z.object({ startedAt: timestamp, latencyMs: nonnegative }),
+    servedFrom: z.object({ seq: count }).optional(),
+  })
+  .refine(
+    (record) => (record.result !== undefined) !== (record.error !== undefined),
+    {
+      message: 'expected exactly one of result or error',
+    },
+  );
+export type ToolRecord = z.infer<typeof toolRecordSchema>;
+
 /** Syntax error distinguished from schema corruption when recovering a crash. */
 export class TapeSyntaxError extends Error {
   constructor(
@@ -90,11 +111,11 @@ export function validateTapeRecord(value: unknown, line: 1): TapeHeader;
 export function validateTapeRecord(
   value: unknown,
   line: number,
-): TapeHeader | Exchange;
+): TapeHeader | Exchange | ToolRecord;
 export function validateTapeRecord(
   value: unknown,
   line: number,
-): TapeHeader | Exchange {
+): TapeHeader | Exchange | ToolRecord {
   if (
     line === 1 &&
     typeof value === 'object' &&
@@ -105,6 +126,7 @@ export function validateTapeRecord(
     if (
       typeof version === 'number' &&
       Number.isInteger(version) &&
+      version !== 1 &&
       version !== TAPE_VERSION
     ) {
       const advice =
@@ -114,9 +136,13 @@ export function validateTapeRecord(
       throw new Error(`tape line ${line}: ${advice}`);
     }
   }
-  const result = (line === 1 ? tapeHeaderSchema : exchangeSchema).safeParse(
-    value,
-  );
+  const result = (
+    line === 1
+      ? tapeHeaderSchema
+      : typeof value === 'object' && value !== null && 'kind' in value
+        ? toolRecordSchema
+        : exchangeSchema
+  ).safeParse(value);
   if (!result.success) {
     // Zod paths can contain arbitrary body keys; never include those keys in logs.
     const issues = result.error.issues.map((issue) => {
@@ -133,11 +159,11 @@ export function parseTapeLine(text: string, line: 1): TapeHeader;
 export function parseTapeLine(
   text: string,
   line: number,
-): TapeHeader | Exchange;
+): TapeHeader | Exchange | ToolRecord;
 export function parseTapeLine(
   text: string,
   line: number,
-): TapeHeader | Exchange {
+): TapeHeader | Exchange | ToolRecord {
   let value: unknown;
   try {
     value = JSON.parse(text);
