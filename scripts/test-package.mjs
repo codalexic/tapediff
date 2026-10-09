@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -45,6 +53,16 @@ function run(command, args, cwd = project) {
   return result;
 }
 
+async function fileBytes(directory) {
+  let bytes = 0;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) bytes += await fileBytes(file);
+    else if (entry.isFile()) bytes += (await stat(file)).size;
+  }
+  return bytes;
+}
+
 try {
   const [pack] = JSON.parse(
     run('npm', ['pack', '--json', '--pack-destination', project], root).stdout,
@@ -77,6 +95,9 @@ try {
     path.join(project, pack.filename),
     `@anthropic-ai/sdk@${sdk}`,
   ]);
+  process.stdout.write(
+    `Installed tapediff files: ${await fileBytes(path.join(project, 'node_modules/tapediff'))} bytes\nInstalled node_modules (including the example SDK): ${await fileBytes(path.join(project, 'node_modules'))} bytes\n`,
+  );
   for (const [flag, source] of [
     [
       '--input-type=module',

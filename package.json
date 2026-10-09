@@ -1,6 +1,6 @@
 {
   "name": "tapediff",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Snapshot testing for AI agents: record, replay, and diff LLM traffic.",
   "type": "module",
   "exports": {
