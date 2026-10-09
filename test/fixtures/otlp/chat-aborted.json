@@ -1,0 +1,143 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "chat-aborted"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "tapediff"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "0.1.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "tapediff",
+            "version": "0.1.0"
+          },
+          "spans": [
+            {
+              "traceId": "21b0a96f08fa195cf69c4abf14ed6cf8",
+              "spanId": "8a3de0b12d5de912",
+              "name": "chat-aborted",
+              "kind": 1,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "tapediff.tape.version",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.output_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.total_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.tape.name",
+                  "value": {
+                    "stringValue": "chat-aborted"
+                  }
+                }
+              ],
+              "status": {
+                "code": 0
+              }
+            },
+            {
+              "traceId": "21b0a96f08fa195cf69c4abf14ed6cf8",
+              "spanId": "434a15651dd6005c",
+              "parentSpanId": "8a3de0b12d5de912",
+              "name": "chat gpt-4.1",
+              "kind": 3,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "aborted"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

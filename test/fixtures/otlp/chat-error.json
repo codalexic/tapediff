@@ -1,0 +1,137 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "chat-error"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "tapediff"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "0.1.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "tapediff",
+            "version": "0.1.0"
+          },
+          "spans": [
+            {
+              "traceId": "89f223a1c678af50ac676011cf4d5ee0",
+              "spanId": "e9d2b81e7ad16198",
+              "name": "chat-error",
+              "kind": 1,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "tapediff.tape.version",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.output_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.total_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "tapediff.tape.name",
+                  "value": {
+                    "stringValue": "chat-error"
+                  }
+                }
+              ],
+              "status": {
+                "code": 0
+              }
+            },
+            {
+              "traceId": "89f223a1c678af50ac676011cf4d5ee0",
+              "spanId": "702b232135965b72",
+              "parentSpanId": "e9d2b81e7ad16198",
+              "name": "chat gpt-4.1",
+              "kind": 3,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "429"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "0"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

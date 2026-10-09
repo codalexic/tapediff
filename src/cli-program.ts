@@ -6,6 +6,7 @@ import { forkCommand, type ForkCommandOptions } from './commands/fork.js';
 import { replayCommand } from './commands/replay.js';
 import { testCommand } from './commands/test.js';
 import { showCommand } from './commands/show.js';
+import { exportCommand, type ExportCommandOptions } from './commands/export.js';
 import { diffCommand, type DiffOptions } from './commands/diff.js';
 import type { ReplayOptions } from './proxy/replay.js';
 
@@ -100,6 +101,24 @@ export function createProgram(): Command {
     .argument('<tape>', 'tape to inspect')
     .option('--json', 'output machine-readable data')
     .action(showCommand);
+
+  program
+    .command('export')
+    .description('Export a tape as OpenTelemetry traces')
+    .argument('<tape>', 'tape to export')
+    .addOption(
+      new Option('--format <format>', 'export format')
+        .choices(['otlp-json'])
+        .default('otlp-json'),
+    )
+    .option('--out <file>', 'write to a file instead of stdout')
+    .option('--force', 'overwrite an existing output file')
+    .option('--endpoint <url>', 'POST traces to an OTLP/HTTP endpoint')
+    .option('--include-content', 'include sensitive input and output messages')
+    .option('--service-name <name>', 'override the resource service name')
+    .action(async (tape: string, options: ExportCommandOptions) => {
+      process.exitCode = await exportCommand(tape, options);
+    });
 
   program
     .command('test')

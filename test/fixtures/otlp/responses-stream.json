@@ -1,0 +1,267 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "responses-stream"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "tapediff"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "0.1.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "tapediff",
+            "version": "0.1.0"
+          },
+          "spans": [
+            {
+              "traceId": "14f9685999a1702f3adfeabea31a49af",
+              "spanId": "59069c5851514f7a",
+              "name": "responses-stream",
+              "kind": 1,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "tapediff.tape.version",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.input_tokens",
+                  "value": {
+                    "intValue": "2408"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.output_tokens",
+                  "value": {
+                    "intValue": "176"
+                  }
+                },
+                {
+                  "key": "tapediff.usage.total_tokens",
+                  "value": {
+                    "intValue": "2584"
+                  }
+                },
+                {
+                  "key": "tapediff.tape.name",
+                  "value": {
+                    "stringValue": "responses-stream"
+                  }
+                },
+                {
+                  "key": "tapediff.cost_usd",
+                  "value": {
+                    "doubleValue": 0.006224
+                  }
+                }
+              ],
+              "status": {
+                "code": 0
+              }
+            },
+            {
+              "traceId": "14f9685999a1702f3adfeabea31a49af",
+              "spanId": "44348358c6fb6fa4",
+              "parentSpanId": "59069c5851514f7a",
+              "name": "chat gpt-4.1",
+              "kind": 3,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.finish_reasons",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "stringValue": "stop"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "1204"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "88"
+                  }
+                },
+                {
+                  "key": "tapediff.cost_usd",
+                  "value": {
+                    "doubleValue": 0.003112
+                  }
+                }
+              ],
+              "status": {
+                "code": 0
+              },
+              "events": [
+                {
+                  "name": "gen_ai.tool.call",
+                  "timeUnixNano": "1791460800820000000",
+                  "attributes": [
+                    {
+                      "key": "gen_ai.tool.name",
+                      "value": {
+                        "stringValue": "get_weather"
+                      }
+                    },
+                    {
+                      "key": "gen_ai.tool.call.id",
+                      "value": {
+                        "stringValue": "call_weather"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "gen_ai.tool.call",
+                  "timeUnixNano": "1791460800820000000",
+                  "attributes": [
+                    {
+                      "key": "gen_ai.tool.name",
+                      "value": {
+                        "stringValue": "get_time"
+                      }
+                    },
+                    {
+                      "key": "gen_ai.tool.call.id",
+                      "value": {
+                        "stringValue": "call_time"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "traceId": "14f9685999a1702f3adfeabea31a49af",
+              "spanId": "2e8c522addcdcd77",
+              "parentSpanId": "59069c5851514f7a",
+              "name": "chat gpt-4.1",
+              "kind": 3,
+              "startTimeUnixNano": "1791460800000000000",
+              "endTimeUnixNano": "1791460800820000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "openai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-4.1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.finish_reasons",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "stringValue": "stop"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "1204"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "88"
+                  }
+                },
+                {
+                  "key": "tapediff.cost_usd",
+                  "value": {
+                    "doubleValue": 0.003112
+                  }
+                }
+              ],
+              "status": {
+                "code": 0
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
