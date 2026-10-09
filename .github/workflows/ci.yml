@@ -32,10 +32,12 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r examples/python-openai/requirements.txt
+      - run: python -m unittest discover -s clients/python -v
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
       - run: npm run build
+      - run: npm ci --prefix examples/ts-anthropic
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
 

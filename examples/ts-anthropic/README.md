@@ -6,7 +6,10 @@ mock model responses; weather and currency tools use deterministic demo data.
 ## Setup
 
 Requires Node >=20. At the repository root, run `npm ci` and `npm run build`,
-then `cd examples/ts-anthropic` and `npm install` for the pinned official SDK.
+then `cd examples/ts-anthropic` and `npm ci` for the pinned official SDK and the
+local `tapediff` dependency (`file:../..`). The tools import `tapediff/tools`
+through the public package export, just as an installed agent would; the local
+dependency keeps this checkout and CI on the same implementation.
 The agent is plain `.mjs` with JSDoc: no TypeScript compiler is needed.
 
 Run all commands below from this example directory. Install the CLI with

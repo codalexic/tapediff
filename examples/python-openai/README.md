@@ -3,6 +3,9 @@
 Try a complete tool loop without an API key. The committed tapes contain local
 mock model responses; weather and currency tools use deterministic demo data.
 
+Tools use the copied `tapediff_tools.py` helper from `clients/python/`, with no
+extra installation. Recording executes them; replay serves their JSON results.
+
 ## Setup
 
 Requires Node >=20 and Python >=3.9. At the repository root, run `npm ci` and

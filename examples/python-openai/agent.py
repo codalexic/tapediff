@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 from openai import OpenAI
+from tapediff_tools import tool
 
 PROMPT = "You are a concise trip helper. Use get_weather and convert_currency before answering."
 REGRESSED_PROMPT = PROMPT + " Double-check the forecast: call get_weather twice before answering."
@@ -34,7 +35,9 @@ def get_weather(city):
 
 def convert_currency(amount, source, target):
     rate = {("USD", "EUR"): 0.92, ("USD", "JPY"): 150}[source, target]
-    return {"amount": round(amount * rate, 2), "currency": target}
+    converted = round(amount * rate, 2)
+    # Integral floats replay as ints through JSON; normalize to keep printed output identical.
+    return {"amount": int(converted) if converted.is_integer() else converted, "currency": target}
 
 
 def main(prompt=PROMPT):
@@ -57,9 +60,9 @@ def main(prompt=PROMPT):
         for call in reply.tool_calls:
             args = json.loads(call.function.arguments)
             if call.function.name == "get_weather":
-                result = get_weather(args["city"])
+                result = tool(call.function.name, args, lambda args: get_weather(args["city"]))
             elif call.function.name == "convert_currency":
-                result = convert_currency(args["amount"], args["from"], args["to"])
+                result = tool(call.function.name, args, lambda args: convert_currency(args["amount"], args["from"], args["to"]))
             else:
                 raise ValueError(f"Unknown tool: {call.function.name}")
             print(f"tool {call.function.name}: {json.dumps(result)}", flush=True)

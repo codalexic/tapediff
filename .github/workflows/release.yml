@@ -28,6 +28,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - run: npm ci --prefix examples/ts-anthropic
       - run: npm test
       - run: npm run test:package
       - run: npm audit --omit=dev --audit-level=high

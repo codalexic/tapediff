@@ -159,6 +159,8 @@ describe.each([
             );
             expect(recorded.code, recorded.stderr).toBe(0);
             const data = await readTape(tape);
+            expect(data.header.tapediff).toBe(2);
+            expect(data.tools).toHaveLength(variant ? 3 : 2);
             expect(data.exchanges).toHaveLength(variant ? 4 : 3);
             const steps = toSteps(data.exchanges);
             expect(

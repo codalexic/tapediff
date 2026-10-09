@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import console from 'node:console';
 import Anthropic from '@anthropic-ai/sdk';
+import { tool } from 'tapediff/tools';
 
 export const PROMPT =
   'You are a concise trip helper. Use get_weather and convert_currency before answering.';
@@ -82,9 +83,12 @@ export async function main(system = PROMPT) {
       if (call.type !== 'tool_use') continue;
       const args = call.input;
       let result;
-      if (call.name === 'get_weather') result = get_weather(args.city);
+      if (call.name === 'get_weather')
+        result = await tool(call.name, args, (args) => get_weather(args.city));
       else if (call.name === 'convert_currency')
-        result = convert_currency(args.amount, args.from, args.to);
+        result = await tool(call.name, args, (args) =>
+          convert_currency(args.amount, args.from, args.to),
+        );
       else throw new Error(`Unknown tool: ${call.name}`);
       console.log(`tool ${call.name}: ${JSON.stringify(result)}`);
       results.push({
