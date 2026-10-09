@@ -4,15 +4,17 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { expect, it } from 'vitest';
 import { run } from '../helpers/cli.js';
+import { version as packageVersion } from '../../src/version.js';
 
 const dist = fileURLToPath(new URL('../../dist/', import.meta.url));
-it('keeps React/Ink outside the CLI static import graph and starts --version', async () => {
+it('keeps React/Ink and export outside the CLI static import graph and starts --version', async () => {
   const visited = new Set<string>();
   const visit = async (name: string): Promise<void> => {
     if (visited.has(name)) return;
     visited.add(name);
     const source = await readFile(path.join(dist, name), 'utf8');
     expect(source).not.toMatch(/react|from ["']ink["']/);
+    expect(source).not.toContain('resourceSpans');
     const ast = ts.createSourceFile(
       name,
       source,
@@ -48,10 +50,12 @@ it('keeps React/Ink outside the CLI static import graph and starts --version', a
       .map(async (name) => readFile(path.join(dist, name), 'utf8')),
   );
   expect(lazy.some((source) => source.includes('react'))).toBe(true);
+  expect(lazy.some((source) => source.includes('resourceSpans'))).toBe(true);
   const version = await run(['--version'], { NODE_DEBUG: 'esm' });
   expect(version.code).toBe(0);
-  expect(version.stdout.trim()).toBe('0.1.0');
+  expect(version.stdout.trim()).toBe(packageVersion);
   expect(version.stderr).not.toMatch(
     /node_modules[\\/]react[\\/]|node_modules[\\/]ink[\\/]/,
   );
+  expect(version.stderr).not.toMatch(/export-[\w-]+\.js/);
 });

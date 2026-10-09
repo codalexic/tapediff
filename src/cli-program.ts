@@ -6,7 +6,7 @@ import { forkCommand, type ForkCommandOptions } from './commands/fork.js';
 import { replayCommand } from './commands/replay.js';
 import { testCommand } from './commands/test.js';
 import { showCommand } from './commands/show.js';
-import { exportCommand, type ExportCommandOptions } from './commands/export.js';
+import type { ExportCommandOptions } from './commands/export.js';
 import { diffCommand, type DiffOptions } from './commands/diff.js';
 import type { ReplayOptions } from './proxy/replay.js';
 
@@ -117,6 +117,7 @@ export function createProgram(): Command {
     .option('--include-content', 'include sensitive input and output messages')
     .option('--service-name <name>', 'override the resource service name')
     .action(async (tape: string, options: ExportCommandOptions) => {
+      const { exportCommand } = await import('./commands/export.js');
       process.exitCode = await exportCommand(tape, options);
     });
 
