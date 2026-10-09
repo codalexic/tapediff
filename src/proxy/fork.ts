@@ -1,11 +1,11 @@
-import { createToolHandler, isToolRoute } from './tools.js';
+import { createToolHandler } from './tools.js';
 import type { TapeWriter } from '../tape/io.js';
 import { matchKey, normalizePath } from '../tape/normalize.js';
 import { redactHeaders } from '../tape/redact.js';
 import type { Exchange } from '../tape/schema.js';
 import { readRequestBody } from './body.js';
 import { createForkMatcher } from './fork-match.js';
-import { createRecordHandler } from './record.js';
+import { createExchangeRecorder } from './record.js';
 import { serveRecordedResponse, type ReplayOptions } from './replay.js';
 import type { ProxyHandler } from './server.js';
 
@@ -34,10 +34,10 @@ export function createForkHandler(
     diverge: (name) => matcher.divergeTool(name),
     warn,
   });
-  const record = createRecordHandler(writer, onExchange);
+  const record = createExchangeRecorder(writer, onExchange);
   let pending = Promise.resolve();
   const handler: ProxyHandler = async (context) => {
-    if (isToolRoute(context.path)) {
+    if (context.reserved) {
       const selection = pending.then(() => tools.handler(context));
       pending = selection.catch(() => {});
       return selection;
@@ -51,7 +51,7 @@ export function createForkHandler(
     );
     const selection = pending.then(async () => {
       const result = await body;
-      if ('error' in result) throw result.error;
+      if ('error' in result) return result;
       const method = request.method ?? 'GET';
       const exchange = matcher.take(provider, {
         method,
@@ -64,7 +64,9 @@ export function createForkHandler(
       () => {},
       () => {},
     );
-    const { incoming, method, exchange } = await selection;
+    const selected = await selection;
+    if ('error' in selected) return record(context, undefined, selected);
+    const { incoming, method, exchange } = selected;
     if (!exchange) return record(context, incoming);
     const served: Exchange = {
       ...exchange,

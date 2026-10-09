@@ -1,4 +1,4 @@
-import { createToolHandler, isToolRoute } from './tools.js';
+import { createToolHandler } from './tools.js';
 import { once } from 'node:events';
 import { request as upstreamRequest } from 'undici';
 import type { Dispatcher } from 'undici';
@@ -48,22 +48,29 @@ export function createRecordHandler(
   writer: Pick<TapeWriter, 'appendExchange'> &
     Partial<Pick<TapeWriter, 'appendTool'>>,
   onExchange?: (exchange: Exchange) => void,
-): ((
-  context: ProxyContext,
-  incoming?: Awaited<ReturnType<typeof readRequestBody>>,
-) => Promise<void>) &
-  Pick<ProxyHandler, 'close'> {
+): ProxyHandler {
   const tools = createToolHandler({
     mode: 'record',
     writer: writer.appendTool
       ? { appendTool: writer.appendTool.bind(writer) }
       : undefined,
   });
-  const record = async (
+  const record = createExchangeRecorder(writer, onExchange);
+  const handler: ProxyHandler = (context) =>
+    context.reserved ? tools.handler(context) : record(context);
+  handler.close = () => tools.close();
+  return handler;
+}
+
+export function createExchangeRecorder(
+  writer: Pick<TapeWriter, 'appendExchange'>,
+  onExchange?: (exchange: Exchange) => void,
+) {
+  return async (
     context: ProxyContext,
     incoming?: Awaited<ReturnType<typeof readRequestBody>>,
+    readFailure?: { error: unknown },
   ) => {
-    if (isToolRoute(context.path)) return tools.handler(context);
     const {
       request,
       response,
@@ -107,6 +114,7 @@ export function createRecordHandler(
       } else responseText += text;
     };
     try {
+      if (readFailure) throw readFailure.error;
       incoming ??= await readRequestBody(request);
       const { bytes } = incoming;
       body = incoming.body;
@@ -217,5 +225,4 @@ export function createRecordHandler(
     await writer.appendExchange(exchange);
     onExchange?.(exchange);
   };
-  return Object.assign(record, { close: () => tools.close() });
 }

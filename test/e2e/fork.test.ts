@@ -408,9 +408,7 @@ it('refuses existing output, overwrites with --force, and substitutes the source
   const env = { OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '' };
   const refused = await run([...args, '--', ...child], env);
   expect(refused.code).toBe(2);
-  expect(refused.stderr).toContain(
-    'output tape exists; use --force to overwrite',
-  );
+  expect(refused.stderr).toContain('output exists; use --force to overwrite');
   expect(await readFile(out, 'utf8')).toBe('keep');
   const result = await run(
     [...args, '--force', '--at', '1', '--diff', '--', ...child],

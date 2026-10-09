@@ -28,6 +28,80 @@ function call(seq: number): Exchange {
     },
   };
 }
+
+it.each([undefined, 3])(
+  'records aborted uploads without consuming a position or breaking queued requests (at=%s)',
+  async (at) => {
+    const written: Exchange[] = [];
+    const arrivals: (() => void)[] = [];
+    const firstArrival = new Promise<void>((resolve) => arrivals.push(resolve));
+    const secondArrival = new Promise<void>((resolve) =>
+      arrivals.push(resolve),
+    );
+    const fork = createForkHandler(
+      [call(0), call(1)],
+      {
+        appendExchange: (entry) => {
+          written.push(entry);
+          return Promise.resolve();
+        },
+      },
+      { at },
+      undefined,
+      () => {},
+    );
+    const proxy = await createProxy({
+      mode: 'fork',
+      handler: (context) => {
+        arrivals.shift()?.();
+        return fork.handler(context);
+      },
+    });
+    const url = `http://127.0.0.1:${proxy.port}/v1/chat/completions`;
+    const slow = httpRequest(url, { method: 'POST' });
+    slow.on('error', () => {});
+    try {
+      slow.write('{"value":');
+      await firstArrival;
+      const second = fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(call(0).request.body),
+      });
+      await secondArrival;
+      slow.destroy();
+      expect(await (await second).json()).toEqual({ seq: 0 });
+      expect(
+        await (
+          await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(call(1).request.body),
+          })
+        ).json(),
+      ).toEqual({ seq: 1 });
+      await proxy.close();
+      expect(written.find((entry) => entry.seq === 0)).toMatchObject({
+        request: { body: null },
+        response: {
+          status: 502,
+          body: { error: { message: 'request aborted' } },
+        },
+        aborted: true,
+      });
+      expect(
+        written
+          .filter((entry) => entry.servedFrom)
+          .map((entry) => [entry.seq, entry.servedFrom?.seq]),
+      ).toEqual([
+        [1, 0],
+        [2, 1],
+      ]);
+      expect(fork.stats).toMatchObject({ live: false, unconsumed: 0 });
+    } finally {
+      slow.destroy();
+      await proxy.close();
+    }
+  },
+);
 async function setup(
   source: Exchange[],
   at?: number,
