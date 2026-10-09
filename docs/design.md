@@ -68,6 +68,16 @@ Each subsequent line = one exchange:
 - TUI: aligned panes, stacked below 100 columns; arrows/j/k, PgUp/PgDn, g/G, n/N, Enter to expand full content with word diff, / or d to filter differences, q/Esc to quit. Expanded content scrolls. Non-TTY stdout or stdin falls back to text with a warning; JSON takes precedence. Ink/React load lazily.
 - Exit 1 if behavior differs (any non-equal step), 0 if identical.
 
+## Fork
+
+`fork` reruns a command, serves a recorded prefix, then records live traffic.
+Strict divergence matching switches permanently on the first LLM miss;
+`--at n` instead assigns the first n-1 LLM responses by request arrival order.
+Response serving and upstream recording share replay/record implementations.
+Optional version 1 provenance fields identify the source and served exchanges;
+diff ignores that provenance. Tools still execute live. See [Fork](fork.md) for
+ordering, changed-prefix warnings, credentials, output and exit semantics.
+
 ## Pricing
 
 `src/pricing.json`: `{ "<model-prefix>": {"input": usdPer1M, "output": usdPer1M, "cacheRead"?, "cacheWrite"?} }`, longest-prefix match; unknown model → cost null, never crash.

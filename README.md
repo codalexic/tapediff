@@ -74,6 +74,30 @@ Inspect the inputs, tool calls, results, and final answer with
 
 ![tapediff show output](docs/assets/show.svg)
 
+## Diff runs
+
+Compare the two tapes from the quickstart:
+
+```sh
+npx tapediff diff run.tape v2.tape
+```
+
+The report compares inputs, calls, tools, and final answers. Usage, cost, and
+latency differences alone do not count as behavior changes.
+
+## Fork a run
+
+Reuse recorded LLM responses, then pay for new provider calls from a chosen call:
+
+```sh
+npx tapediff record --out before.tape -- python my_agent.py
+# edit my_agent.py
+npx tapediff fork before.tape --at 2 --diff -- python my_agent.py
+```
+
+Omit `--at` to go live at the first LLM request mismatch. Tools still run live;
+see [fork semantics and prefix warnings](docs/fork.md).
+
 ## Use it in CI
 
 For a Python agent with committed `tapes/`, `agent.py`, and `requirements.txt`:

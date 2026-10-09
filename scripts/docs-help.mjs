@@ -4,7 +4,16 @@ import process from 'node:process';
 import spawn from 'cross-spawn';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const sections = ['', 'record', 'replay', 'diff', 'show', 'test', 'help']
+const sections = [
+  '',
+  'record',
+  'replay',
+  'fork',
+  'diff',
+  'show',
+  'test',
+  'help',
+]
   .map((command) => {
     const args = command ? [command, '--help'] : ['--help'];
     const result = spawn.sync(process.execPath, ['dist/cli.js', ...args], {

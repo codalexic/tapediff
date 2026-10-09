@@ -14,6 +14,14 @@ Committed [example tapes](../examples/python-openai/tapes) are real files you ca
 | `command`   | Array of child command/argument strings, redacted before writing.                   |
 | `tool`      | `{name: "tapediff", version: string}`; package version, separate from tape version. |
 
+A fork header additionally has optional `forkedFrom`:
+
+`{tape: string, at: number | null, mode: "divergence" | "positional", sourceCreatedAt: string}`.
+`tape` is the source path as supplied, redacted before writing. `at` is an integer
+
+> =1 for positional mode, or null for divergence mode. `sourceCreatedAt` copies
+> the source header's ISO timestamp. `command` identifies the new child command.
+
 ## Exchange
 
 | Field            | Type / meaning                                                                                                     |
@@ -30,6 +38,13 @@ Committed [example tapes](../examples/python-openai/tapes) are real files you ca
 | `model`          | Optional string.                                                                                                   |
 | `costUsd`        | Optional nonnegative number or null for unknown pricing.                                                           |
 | `aborted`        | Optional boolean marking a client-aborted response.                                                                |
+
+An exchange may also have `servedFrom: {seq: number}`, with a nonnegative source
+sequence number. Fork writes the incoming request and recomputes both match keys,
+assigns the new run's `id`/`seq` and `timing.startedAt`, and retains the source
+response, usage, model, cost and `timing.latencyMs`. Live exchanges omit
+`servedFrom`. These optional fields do not change tape version 1; old tapes
+read, replay and diff as before. See [fork semantics](fork.md).
 
 JSON bodies are reserialized on replay. SSE text and offsets are retained after
 redaction; redaction can regroup raw network chunks into event frames. This is
