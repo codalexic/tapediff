@@ -14,6 +14,18 @@ function nextReply(body) {
     body.system ??
     body.messages.find((message) => message.role === 'system')?.content ??
     '';
+  if (system.startsWith('Draft a day plan.'))
+    return {
+      type: 'text',
+      text: `Paris: sunny, 22 ${system.includes('as Celsius') ? 'C' : 'F'}. Budget: 92 EUR. Walk by the Seine.`,
+    };
+  if (system.startsWith('Review the day plan'))
+    return {
+      type: 'text',
+      text: String(firstUser?.content).includes('22 F')
+        ? 'FAIL: the forecast is 22 C, not 22 F. The 92 EUR budget is correct.'
+        : 'PASS: the plan matches 22 C and the 92 EUR budget.',
+    };
   const calls = body.messages
     .filter((message) => message.role === 'assistant')
     .flatMap(
@@ -30,6 +42,8 @@ function nextReply(body) {
   } else if (!calls.includes('convert_currency')) {
     name = 'convert_currency';
     input = { amount: 100, from: 'USD', to: city === 'Tokyo' ? 'JPY' : 'EUR' };
+    if (system.startsWith('Research the trip.'))
+      input = { amount: 100, source: 'USD', target: 'EUR' };
   } else if (
     system.includes('call get_weather twice') &&
     calls.filter((call) => call === 'get_weather').length < 2

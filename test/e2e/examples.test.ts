@@ -1,10 +1,10 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import spawn from 'cross-spawn';
 import { describe, expect, it } from 'vitest';
 import { startMock } from '../../examples/_mock/mock-llm.mjs';
+import { pythonEnv as environmentForPython } from '../../examples/_mock/python-env.mjs';
 import {
   cli,
   exampleEnv,
@@ -14,26 +14,173 @@ import {
 import { readTape } from '../../src/tape/io.js';
 import { toSteps } from '../../src/steps.js';
 
-const pythonEnv = exampleEnv();
-const venvBin = path.join(
-  root,
-  'examples/python-openai/.venv',
-  process.platform === 'win32' ? 'Scripts' : 'bin',
-);
-if (
-  existsSync(
-    path.join(venvBin, process.platform === 'win32' ? 'python.exe' : 'python'),
-  )
-) {
-  const key =
-    Object.keys(pythonEnv).find((name) => name.toLowerCase() === 'path') ??
-    'PATH';
-  pythonEnv[key] = `${venvBin}${path.delimiter}${pythonEnv[key] ?? ''}`;
-}
+const pythonEnv = environmentForPython('python-openai', exampleEnv());
 const python = spawn.sync('python', ['-c', 'import openai'], {
   env: pythonEnv,
   timeout: 10_000,
 });
+
+const graphEnv = environmentForPython('python-langgraph', exampleEnv());
+const graphProbe = spawn.sync(
+  'python',
+  ['-c', 'import langgraph, langchain_openai'],
+  {
+    env: graphEnv,
+    timeout: 30_000,
+  },
+);
+const hasGraph = !graphProbe.error && graphProbe.status === 0;
+if (!hasGraph)
+  console.warn(
+    'SKIP LangGraph example: install examples/python-langgraph/requirements.txt in its .venv.',
+  );
+
+it.skipIf(!hasGraph)(
+  'runs the LangGraph README, forks only draft/review and replays tools offline',
+  async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'tapediff-langgraph-'));
+    const source = path.join(root, 'examples/python-langgraph');
+    const mock = await startMock();
+    const liveEnv = {
+      ...graphEnv,
+      OPENAI_API_KEY: 'tapediff-local-mock',
+      OPENAI_BASE_URL: `${mock.url}/v1`,
+      TAPEDIFF_OPENAI_UPSTREAM: '',
+    };
+    const run = (args: string[], env = graphEnv) =>
+      runExample([cli, ...args], cwd, env);
+    try {
+      try {
+        const baseOnly: NodeJS.ProcessEnv = { ...liveEnv };
+        delete baseOnly.OPENAI_API_BASE;
+        const configured = spawn.sync(
+          'python',
+          [
+            '-c',
+            'import os; from langchain_openai import ChatOpenAI; client = ChatOpenAI(model="gpt-4.1-nano"); assert str(client.root_client.base_url).rstrip("/") == os.environ["OPENAI_BASE_URL"]',
+          ],
+          { env: baseOnly, encoding: 'utf8', timeout: 30_000 },
+        );
+        expect(configured.status, configured.stderr).toBe(0);
+        for (const file of ['agent.py', 'agent_v2.py', 'tapediff_tools.py'])
+          await copyFile(path.join(source, file), path.join(cwd, file));
+        await mkdir(path.join(cwd, 'tapes'));
+        const readme = await readFile(path.join(source, 'README.md'), 'utf8');
+        const commands = [
+          ...readme.matchAll(/```sh\r?\n(tapediff [^\r\n]+)\r?\n```/g),
+        ].map((match) => match[1]!.split(' ').slice(1));
+        expect(commands.map((args) => args[0])).toEqual([
+          'record',
+          'show',
+          'fork',
+          'replay',
+        ]);
+        const recorded = await run(commands[0]!, liveEnv);
+        expect(recorded.code, recorded.stderr).toBe(0);
+        expect(recorded.stdout).toContain('executing get_weather');
+        expect(recorded.stdout).toContain('executing convert_currency');
+        expect(recorded.stdout).toContain('review: FAIL:');
+        const baseline = await readTape(path.join(cwd, 'tapes/trip.tape'));
+        expect(baseline.exchanges).toHaveLength(5);
+        expect(baseline.tools.map((tool) => tool.name)).toEqual([
+          'get_weather',
+          'convert_currency',
+        ]);
+        const shown = await run(commands[1]!);
+        expect(shown.code, shown.stderr).toBe(0);
+        expect(shown.stdout).toMatch(/#4\s+gpt-4.1-nano/);
+        const forked = await run(commands[2]!, liveEnv);
+        expect(forked.code, forked.stderr).toBe(0);
+        expect(forked.stderr).toContain(
+          '3 calls + 2 tools from tape · 2 live calls · 0 live tools · saved $0.00006 (375 tokens)',
+        );
+        expect(forked.stdout).not.toContain('executing');
+        expect(forked.stdout).toContain('review: PASS:');
+        expect(forked.stdout).toContain('Fahrenheit');
+        expect(forked.stdout).toContain('Celsius');
+        expect(forked.stdout).toContain('behavior differs');
+        const candidate = await readTape(
+          path.join(cwd, 'tapes/trip.fork.tape'),
+        );
+        expect(
+          candidate.exchanges.map((call) => Boolean(call.servedFrom)),
+        ).toEqual([true, true, true, false, false]);
+        expect(candidate.tools.every((tool) => tool.servedFrom)).toBe(true);
+        expect(
+          candidate.exchanges.slice(0, 3).map((call) => call.response),
+        ).toEqual(baseline.exchanges.slice(0, 3).map((call) => call.response));
+        expect(candidate.exchanges[3]!.response).not.toEqual(
+          baseline.exchanges[3]!.response,
+        );
+        expect(candidate.exchanges[4]!.response).not.toEqual(
+          baseline.exchanges[4]!.response,
+        );
+        const divergent = await run(
+          [
+            'fork',
+            'tapes/trip.tape',
+            '--out',
+            'divergence.tape',
+            '--',
+            'python',
+            'agent_v2.py',
+          ],
+          liveEnv,
+        );
+        expect(divergent.code, divergent.stderr).toBe(0);
+        expect(divergent.stderr).toContain('diverged at call #4');
+        expect(divergent.stderr).toContain('3 calls + 2 tools from tape');
+      } finally {
+        await mock.close();
+      }
+      const commands = [
+        ...(await readFile(path.join(source, 'README.md'), 'utf8')).matchAll(
+          /```sh\r?\n(tapediff [^\r\n]+)\r?\n```/g,
+        ),
+      ];
+      const replayArgs = commands[3]![1]!.split(' ').slice(1);
+      const replay = await run(replayArgs);
+      expect(replay.code, replay.stderr).toBe(0);
+      expect(replay.stderr).toContain('5 exchanges · 2 tools · 0 misses');
+      expect(replay.stdout).not.toContain('executing');
+      expect(replay.stdout).toContain('review: PASS:');
+      expect((await run(replayArgs)).stdout).toBe(replay.stdout);
+      for (const [tape, agent] of [
+        ['tapes/trip.tape', 'agent.py'],
+        ['tapes/trip.fork.tape', 'agent_v2.py'],
+        ['divergence.tape', 'agent_v2.py'],
+      ]) {
+        const tested = await run(['test', tape!, '--', 'python', agent!]);
+        expect(tested.code, tested.stderr).toBe(0);
+        expect(tested.stderr).toContain('PASS');
+      }
+      const drift = await run([
+        'test',
+        'tapes/trip.tape',
+        '--',
+        'python',
+        'agent_v2.py',
+      ]);
+      expect(drift.code).toBe(1);
+      expect(drift.stderr).toContain('FAIL');
+      for (const [tape, agent] of [
+        ['tapes/trip.tape', 'agent.py'],
+        ['regressions/trip.fork.tape', 'agent_v2.py'],
+      ]) {
+        const replay = await runExample(
+          [cli, 'replay', tape!, '--', 'python', agent!],
+          source,
+          graphEnv,
+        );
+        expect(replay.code, replay.stderr).toBe(0);
+        expect(replay.stderr).toContain('5 exchanges · 2 tools · 0 misses');
+      }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  },
+  120_000,
+);
 const hasPython = !python.error && python.status === 0;
 if (!hasPython)
   console.warn(

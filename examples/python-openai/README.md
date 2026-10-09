@@ -73,7 +73,7 @@ Regression tapes live outside `tapes/` so the baseline suite stays green.
 
 Set `OPENAI_API_KEY` in your environment, then run
 `tapediff record --out my-trip.tape -- python agent.py paris`.
-This uses the live provider and incurs charges. To regenerate all six bundled
-tapes locally instead, install both examples' dependencies, build, and run
+This uses the live provider and incurs charges. To regenerate all eight bundled
+tapes locally instead, install all three examples' dependencies, build, and run
 `npm run examples:record` from the repository root. It starts/stops a mock and
 runs the real CLI with `--force`; timestamps and timings vary. Do not hand-edit tapes.

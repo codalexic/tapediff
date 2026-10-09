@@ -1,39 +1,13 @@
-import { mkdir, access } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
 import spawn from 'cross-spawn';
 import { startMock } from './mock-llm.mjs';
+import { pythonEnv } from './python-env.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const pythonDir = path.join(root, 'examples/python-openai');
-const venvBin = path.join(
-  pythonDir,
-  '.venv',
-  process.platform === 'win32' ? 'Scripts' : 'bin',
-);
-const pathKey =
-  Object.keys(process.env).find((key) => key.toLowerCase() === 'path') ??
-  'PATH';
 const env = { ...process.env };
-try {
-  await access(
-    path.join(venvBin, process.platform === 'win32' ? 'python.exe' : 'python'),
-  );
-  env[pathKey] = `${venvBin}${path.delimiter}${env[pathKey] ?? ''}`;
-} catch {
-  /* Use python from PATH when no local venv exists. */
-}
-
-const probe = spawn.sync('python', ['-c', 'import openai'], {
-  cwd: pythonDir,
-  env,
-  timeout: 10_000,
-});
-if (probe.error || probe.status !== 0)
-  throw new Error(
-    'Install Python dependencies first: see examples/python-openai/README.md',
-  );
 const mock = await startMock();
 try {
   Object.assign(env, {
@@ -48,40 +22,74 @@ try {
     TAPEDIFF_TAPE: '',
     TAPEDIFF_REDACT: '',
     PYTHONUNBUFFERED: '1',
+    LANGSMITH_TRACING: 'false',
+    LANGCHAIN_TRACING_V2: 'false',
     NO_PROXY: '127.0.0.1,localhost',
   });
   for (const [directory, runtime, extension] of [
     ['python-openai', 'python', 'py'],
     ['ts-anthropic', 'node', 'mjs'],
+    ['python-langgraph', 'python', 'py'],
   ]) {
     const cwd = path.join(root, 'examples', directory);
+    const childEnv = runtime === 'python' ? pythonEnv(directory, env) : env;
+    if (runtime === 'python') {
+      const probe = spawn.sync(
+        'python',
+        [
+          '-c',
+          directory === 'python-langgraph'
+            ? 'import langgraph, langchain_openai'
+            : 'import openai',
+        ],
+        {
+          cwd,
+          env: childEnv,
+          timeout: 30_000,
+        },
+      );
+      if (probe.error || probe.status !== 0) {
+        process.stderr.write(
+          `SKIP ${directory}: install its requirements.txt in .venv.\n`,
+        );
+        continue;
+      }
+    }
     await mkdir(path.join(cwd, 'tapes'), { recursive: true });
     await mkdir(path.join(cwd, 'regressions'), { recursive: true });
-    for (const [scenario, variant] of [
-      ['paris', ''],
-      ['tokyo', ''],
-      ['paris', '_v2'],
-    ]) {
+    for (const [scenario, variant] of directory === 'python-langgraph'
+      ? [
+          ['trip', ''],
+          ['trip', '_v2'],
+        ]
+      : [
+          ['paris', ''],
+          ['tokyo', ''],
+          ['paris', '_v2'],
+        ]) {
       const tape = variant
-        ? 'regressions/paris-v2.tape'
+        ? `regressions/${scenario}${directory === 'python-langgraph' ? '.fork' : '-v2'}.tape`
         : `tapes/${scenario}.tape`;
       await new Promise((resolve, reject) => {
         const child = spawn(
           process.execPath,
           [
             path.join(root, 'dist/cli.js'),
-            'record',
+            ...(directory === 'python-langgraph' && variant
+              ? ['fork', 'tapes/trip.tape', '--at', '4']
+              : ['record']),
             '--force',
-            '--name',
-            `${directory}: ${scenario}${variant}`,
+            ...(directory === 'python-langgraph'
+              ? []
+              : ['--name', `${directory}: ${scenario}${variant}`]),
             '--out',
             tape,
             '--',
             runtime,
             `agent${variant}.${extension}`,
-            scenario,
+            ...(directory === 'python-langgraph' ? [] : [scenario]),
           ],
-          { cwd, env, stdio: 'inherit' },
+          { cwd, env: childEnv, stdio: 'inherit' },
         );
         child.once('error', reject);
         child.once('close', (code) =>

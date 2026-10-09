@@ -545,13 +545,18 @@ const venv = path.join(
   process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
 );
 
-it('keeps the vendored Python helper identical to the client', async () => {
-  expect(
-    await readFile(path.join(root, 'examples/python-openai/tapediff_tools.py')),
-  ).toEqual(
-    await readFile(path.join(root, 'clients/python/tapediff_tools.py')),
-  );
-});
+it.each(['python-openai', 'python-langgraph'])(
+  'keeps the %s vendored helper identical to the client',
+  async (directory) => {
+    expect(
+      await readFile(
+        path.join(root, `examples/${directory}/tapediff_tools.py`),
+      ),
+    ).toEqual(
+      await readFile(path.join(root, 'clients/python/tapediff_tools.py')),
+    );
+  },
+);
 const python = existsSync(venv) ? venv : 'python';
 const probe = spawn.sync(python, ['--version'], { timeout: 10_000 });
 const hasPython = !probe.error && probe.status === 0;

@@ -21,6 +21,8 @@ export function exampleEnv(): NodeJS.ProcessEnv {
     NO_COLOR: '1',
     NO_PROXY: '127.0.0.1,localhost',
     PYTHONUNBUFFERED: '1',
+    LANGSMITH_TRACING: 'false',
+    LANGCHAIN_TRACING_V2: 'false',
   };
 }
 
