@@ -10,6 +10,7 @@ export interface ProxyContext {
   response: ServerResponse;
   provider: Provider;
   path: string;
+  reserved: boolean;
   upstream?: URL;
   seq: number;
   startedAt: string;
@@ -88,6 +89,7 @@ export async function createProxy(options: {
       response,
       provider,
       path,
+      reserved,
       seq: seq++,
       startedAt: new Date().toISOString(),
       started: performance.now(),
