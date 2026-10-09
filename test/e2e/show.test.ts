@@ -38,6 +38,7 @@ it('show --json prints the complete versioned schema, original header, steps and
     schemaVersion: 1,
     header: data.header,
     steps,
+    tools: [],
     totals: stepTotals(steps),
   });
 });

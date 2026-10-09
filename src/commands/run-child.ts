@@ -37,6 +37,7 @@ export async function runChild(
       stdio: 'inherit',
       env: {
         ...env,
+        TAPEDIFF_PROXY_URL: `http://127.0.0.1:${proxy.port}`,
         OPENAI_BASE_URL: proxy.baseUrls.openai,
         OPENAI_API_BASE: proxy.baseUrls.openai,
         ANTHROPIC_BASE_URL: proxy.baseUrls.anthropic,

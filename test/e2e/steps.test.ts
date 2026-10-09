@@ -106,8 +106,10 @@ it.each(cases)(
           ];
       }
       const name = `${api}-${mode}`;
+      expect(recorded.header.tapediff).toBe(2);
+      // Keep the v1 fixtures as compatibility baselines for unchanged exchange lines.
       const tapeText =
-        [recorded.header, ...recorded.exchanges]
+        [{ ...recorded.header, tapediff: 1 }, ...recorded.exchanges]
           .map((line) => JSON.stringify(line))
           .join('\n') + '\n';
       await expect(tapeText).toMatchFileSnapshot(

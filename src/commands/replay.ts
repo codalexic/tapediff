@@ -23,12 +23,16 @@ export async function replayCommand(
     },
   );
   const stats = replay.stats;
-  if (stats.unconsumed)
+  if (stats.unusedTools)
     process.stderr.write(
-      `warning: ${stats.unconsumed} recorded ${stats.unconsumed === 1 ? 'call was' : 'calls were'} never requested\n`,
+      `warning: ${stats.unusedTools} recorded tools were never requested\n`,
+    );
+  if (stats.unconsumed - stats.unusedTools)
+    process.stderr.write(
+      `warning: ${stats.unconsumed - stats.unusedTools} recorded ${stats.unconsumed - stats.unusedTools === 1 ? 'call was' : 'calls were'} never requested\n`,
     );
   process.stderr.write(
-    `replayed ${stats.consumed} exchanges · ${stats.misses} misses · ${stats.fallbacks} fallbacks ← ${redactBody(tape) as string}\n`,
+    `replayed ${stats.consumed} exchanges · ${stats.tools} tools · ${stats.misses} misses · ${stats.fallbacks} fallbacks ← ${redactBody(tape) as string}\n`,
   );
   return { ...stats, childCode, code: stats.misses ? 3 : childCode };
 }

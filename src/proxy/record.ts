@@ -1,3 +1,4 @@
+import { createToolHandler, isToolRoute } from './tools.js';
 import { once } from 'node:events';
 import { request as upstreamRequest } from 'undici';
 import type { Dispatcher } from 'undici';
@@ -9,7 +10,7 @@ import { matchKey, normalizePath } from '../tape/normalize.js';
 import { redactHeaders } from '../tape/redact.js';
 import type { TapeWriter } from '../tape/io.js';
 import type { Exchange, JsonValue, SseChunk } from '../tape/schema.js';
-import type { ProxyContext } from './server.js';
+import type { ProxyContext, ProxyHandler } from './server.js';
 import { SseParser } from './sse.js';
 import { parseBody, readRequestBody } from './body.js';
 
@@ -44,14 +45,26 @@ export function forwardingHeaders(
 }
 
 export function createRecordHandler(
-  writer: Pick<TapeWriter, 'appendExchange'>,
+  writer: Pick<TapeWriter, 'appendExchange'> &
+    Partial<Pick<TapeWriter, 'appendTool'>>,
   onExchange?: (exchange: Exchange) => void,
-): (
+): ((
   context: ProxyContext,
   incoming?: Awaited<ReturnType<typeof readRequestBody>>,
-) => Promise<void> {
-  return async (
-    {
+) => Promise<void>) &
+  Pick<ProxyHandler, 'close'> {
+  const tools = createToolHandler({
+    mode: 'record',
+    writer: writer.appendTool
+      ? { appendTool: writer.appendTool.bind(writer) }
+      : undefined,
+  });
+  const record = async (
+    context: ProxyContext,
+    incoming?: Awaited<ReturnType<typeof readRequestBody>>,
+  ) => {
+    if (isToolRoute(context.path)) return tools.handler(context);
+    const {
       request,
       response,
       provider,
@@ -61,9 +74,7 @@ export function createRecordHandler(
       startedAt,
       started,
       signal,
-    },
-    incoming,
-  ) => {
+    } = context;
     let body: JsonValue = null;
     let recorded: Exchange['response'] = { status: 502, headers: {} };
     let metadata: Metadata = {};
@@ -206,4 +217,5 @@ export function createRecordHandler(
     await writer.appendExchange(exchange);
     onExchange?.(exchange);
   };
+  return Object.assign(record, { close: () => tools.close() });
 }

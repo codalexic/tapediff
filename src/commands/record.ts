@@ -24,7 +24,7 @@ export async function recordCommand(
   const writer = await openOutputTape(
     options.out,
     {
-      tapediff: 1,
+      tapediff: 2,
       createdAt: new Date().toISOString(),
       command,
       ...(options.name === undefined ? {} : { name: options.name }),

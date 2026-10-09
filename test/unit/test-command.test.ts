@@ -19,6 +19,8 @@ it.each([130, 143])(
       fallbacks: 0,
       consumed: 0,
       unconsumed: 0,
+      tools: 0,
+      unusedTools: 0,
     });
     const output = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     expect(await testCommand('.', ['agent'])).toBe(1);
@@ -41,6 +43,8 @@ it.each(['SIGINT', 'SIGTERM'] as const)(
         fallbacks: 0,
         consumed: 0,
         unconsumed: 0,
+        tools: 0,
+        unusedTools: 0,
       });
     });
     const output = vi.spyOn(process.stderr, 'write').mockReturnValue(true);

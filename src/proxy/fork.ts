@@ -1,3 +1,4 @@
+import { createToolHandler, isToolRoute } from './tools.js';
 import type { TapeWriter } from '../tape/io.js';
 import { matchKey, normalizePath } from '../tape/normalize.js';
 import { redactHeaders } from '../tape/redact.js';
@@ -11,19 +12,36 @@ import type { ProxyHandler } from './server.js';
 export interface ForkOptions {
   at?: number;
   pace?: ReplayOptions['pace'];
+  tools?: ReplayOptions['tools'];
 }
 
 export function createForkHandler(
   exchanges: readonly Exchange[],
-  writer: Pick<TapeWriter, 'appendExchange'>,
+  writer: Pick<TapeWriter, 'appendExchange'> &
+    Partial<Pick<TapeWriter, 'appendTool'>>,
   options: ForkOptions = {},
   onExchange?: (exchange: Exchange) => void,
   warn?: (message: string) => void,
 ) {
   const matcher = createForkMatcher(exchanges, options.at, warn);
+  const tools = createToolHandler({
+    mode: 'fork',
+    tools: options.tools,
+    writer: writer.appendTool
+      ? { appendTool: writer.appendTool.bind(writer) }
+      : undefined,
+    isLive: () => matcher.stats.live,
+    diverge: (name) => matcher.divergeTool(name),
+    warn,
+  });
   const record = createRecordHandler(writer, onExchange);
   let pending = Promise.resolve();
   const handler: ProxyHandler = async (context) => {
+    if (isToolRoute(context.path)) {
+      const selection = pending.then(() => tools.handler(context));
+      pending = selection.catch(() => {});
+      return selection;
+    }
     const { request, path, provider, seq, startedAt, response, signal } =
       context;
     // Reserve in arrival order; only selection waits, never upstream or SSE delivery.
@@ -74,10 +92,16 @@ export function createForkHandler(
       options.pace,
     );
   };
+  handler.close = () => tools.close();
   return {
     handler,
     get stats() {
-      return matcher.stats;
+      return {
+        ...matcher.stats,
+        tools: tools.stats.consumed,
+        liveTools: tools.stats.recorded,
+        unconsumed: matcher.stats.unconsumed + tools.stats.unconsumed,
+      };
     },
   };
 }

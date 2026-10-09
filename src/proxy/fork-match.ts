@@ -18,7 +18,7 @@ export function createForkMatcher(
     queue.push(exchange);
     queues.set(key, queue);
   }
-  let live = false;
+  let live = at === 1;
   let position = 0;
   let changed = 0;
   const warning = (message: string) =>
@@ -29,6 +29,12 @@ export function createForkMatcher(
       ) as string,
     );
   return {
+    divergeTool(name: string) {
+      if (!live && at === undefined) {
+        live = true;
+        warning(`fork: tool ${name} diverged, going live\n`);
+      }
+    },
     take(
       provider: Provider,
       request: Pick<Exchange['request'], 'method' | 'path' | 'body'>,

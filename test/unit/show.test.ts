@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { renderSteps, stepTotals } from '../../src/commands/show.js';
 import type { Step } from '../../src/steps.js';
 import { terminalLine } from '../../src/terminal.js';
+import type { ToolRecord } from '../../src/tape/schema.js';
 
 const call: Step = {
   kind: 'llm_call',
@@ -14,6 +15,66 @@ const call: Step = {
   latencyMs: 820,
   status: 200,
 };
+
+it('places tools after the first matching preceding call, with canonical args and sequence fallback', () => {
+  const toolCall = (
+    id: string,
+    args: ToolRecord['args'],
+    name = 'weather',
+  ): Step => ({
+    kind: 'tool_call',
+    id,
+    name,
+    args,
+  });
+  const record = (
+    seq: number,
+    args: ToolRecord['args'],
+    result: string,
+    name = 'weather',
+  ): ToolRecord => ({
+    kind: 'tool',
+    id: seq,
+    seq,
+    name,
+    args,
+    result,
+    matchKey: 'a'.repeat(64),
+    timing: { startedAt: '2026-10-09T00:00:00Z', latencyMs: 3 },
+  });
+  const steps: Step[] = [
+    call,
+    toolCall('first', { a: 1, b: 2 }),
+    toolCall('second', { b: 2, a: 1 }),
+    { kind: 'tool_result', id: 'first', name: 'weather', content: 'result' },
+    { ...call, seq: 5 },
+    toolCall('future', { city: 'future' }),
+  ];
+  const records = [
+    record(6, { city: 'future' }, 'future match'),
+    record(1, { b: 2, a: 1 }, 'first match'),
+    record(2, { a: 1, b: 2 }, 'second match'),
+    record(3, { city: 'future' }, 'no preceding match'),
+    record(4, { a: 1, b: 2 }, 'different name', 'other'),
+    record(7, { city: 'different' }, 'different args'),
+  ];
+  expect(renderSteps(steps, 200, false, records)).toMatchInlineSnapshot(`
+    "#1  gpt-4.1  1,204→88 tok  $0.0031  820ms
+        → tool_call weather {"a":1,"b":2}
+        ⚙ weather {"b":2,"a":1} → "\\"first match\\"" 3ms
+        → tool_call weather {"b":2,"a":1}
+        ⚙ weather {"a":1,"b":2} → "\\"second match\\"" 3ms
+        ← tool_result weather "result"
+        ⚙ weather {"city":"future"} → "\\"no preceding match\\"" 3ms
+        ⚙ other {"a":1,"b":2} → "\\"different name\\"" 3ms
+    #2  gpt-4.1  1,204→88 tok  $0.0031  820ms
+        → tool_call weather {"city":"future"}
+        ⚙ weather {"city":"future"} → "\\"future match\\"" 3ms
+        ⚙ weather {"city":"different"} → "\\"different args\\"" 3ms
+    total: 2 calls · 2.6k tokens · $0.0062 · 1.6s
+    "
+  `);
+});
 
 it('counts wide characters and preserves combining sequences when truncating', () => {
   expect(terminalLine('晴天晴天', 5)).toBe('晴天…');

@@ -44,7 +44,9 @@ it('serves call #1 and permanently switches at an edited call #2', async () => {
     expect(result.stderr).toContain(
       'fork: diverged at call #2 (POST /v1/chat/completions), going live',
     );
-    expect(result.stderr).toContain('fork: 1 call from tape · 2 live');
+    expect(result.stderr).toContain(
+      'fork: 1 call + 0 tools from tape · 2 live',
+    );
     expect(result.stderr).not.toContain('never requested');
     expect(fake.requests).toHaveLength(2);
     expect(fake.requests[0]?.body.messages).toEqual([
@@ -89,8 +91,8 @@ it.each([undefined, 4])(
         expect(result.code, result.stderr).toBe(0);
         expect(result.stderr).toContain(
           calls === 1
-            ? 'fork: 1 call from tape · 0 live'
-            : 'fork: 2 calls from tape · 0 live',
+            ? 'fork: 1 call + 0 tools from tape · 0 live'
+            : 'fork: 2 calls + 0 tools from tape · 0 live',
         );
         expect(result.stderr).toContain(
           calls === 1
@@ -125,7 +127,9 @@ it('pluralizes the summary hint when two changed requests are served', async () 
     expect(result.stderr).toContain(
       '2 calls were served from the tape even though their requests changed; see docs/fork.md',
     );
-    expect(result.stderr).toContain('fork: 2 calls from tape · 0 live');
+    expect(result.stderr).toContain(
+      'fork: 2 calls + 0 tools from tape · 0 live',
+    );
     expect(result.stderr).not.toContain('never requested');
     expect(fake.requests).toHaveLength(0);
   } finally {
@@ -158,7 +162,9 @@ it.each(['openai', 'anthropic'])(
       );
       expect(result.code, result.stderr).toBe(0);
       expect(fake.requests).toHaveLength(0);
-      expect(result.stderr).toContain('fork: 2 calls from tape · 0 live');
+      expect(result.stderr).toContain(
+        'fork: 2 calls + 0 tools from tape · 0 live',
+      );
       const out = path.join(dir, 'source.fork.tape');
       const original = await readTape(source);
       const fork = await readTape(out);
@@ -535,7 +541,7 @@ it('reports unknown saved cost and excludes unknown-provider exchanges from the 
     );
     expect(result.code, result.stderr).toBe(0);
     expect(result.stderr).toContain(
-      'fork: 1 call from tape · 1 live · saved cost unknown',
+      'fork: 1 call + 0 tools from tape · 1 live call · 0 live tools · saved cost unknown',
     );
     expect(result.stderr).not.toContain('never requested');
     expect(fake.requests).toHaveLength(1);

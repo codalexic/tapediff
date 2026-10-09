@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { detectProvider } from '../providers/detect.js';
 import { normalizePath } from '../tape/normalize.js';
 import type { Provider } from '../tape/schema.js';
+import { isToolRoute } from './tools.js';
 
 export interface ProxyContext {
   request: IncomingMessage;
@@ -15,7 +16,9 @@ export interface ProxyContext {
   started: number;
   signal: AbortSignal;
 }
-export type ProxyHandler = (context: ProxyContext) => Promise<void>;
+export type ProxyHandler = ((context: ProxyContext) => Promise<void>) & {
+  close?: () => void;
+};
 
 export function resolveUpstreams(env: NodeJS.ProcessEnv) {
   return {
@@ -75,7 +78,8 @@ export async function createProxy(options: {
     response.once('close', abort);
     request.once('aborted', abort);
     const route = request.url ?? '/';
-    const provider = detectProvider(route);
+    const reserved = isToolRoute(route);
+    const provider = reserved ? 'unknown' : detectProvider(route);
     const path =
       normalizePath(route) +
       (route.includes('?') ? route.slice(route.indexOf('?')) : '');
@@ -89,7 +93,7 @@ export async function createProxy(options: {
       started: performance.now(),
       signal: controller.signal,
       upstream:
-        options.mode !== 'replay' && provider !== 'unknown'
+        !reserved && options.mode !== 'replay' && provider !== 'unknown'
           ? upstreamUrl(upstreams[provider], path, provider)
           : undefined,
     };
@@ -144,6 +148,7 @@ export async function createProxy(options: {
         server.closeAllConnections();
         await Promise.all([...active.keys()]);
         await closed;
+        options.handler.close?.();
         if (failure)
           throw new Error('failed to handle an exchange', { cause: failure });
       })();

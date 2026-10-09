@@ -38,7 +38,7 @@ export async function forkCommand(
   const writer = await openOutputTape(
     out,
     {
-      tapediff: 1,
+      tapediff: 2,
       createdAt: new Date().toISOString(),
       command: childCommand,
       tool: { name: 'tapediff', version },
@@ -57,7 +57,7 @@ export async function forkCommand(
   const fork = createForkHandler(
     source.exchanges,
     writer,
-    options,
+    { ...options, tools: source.tools },
     (exchange) => {
       if (exchange.provider === 'unknown') return;
       if (!exchange.servedFrom) live++;
@@ -93,7 +93,7 @@ export async function forkCommand(
       failed = true;
     }
     process.stderr.write(
-      `fork: ${saved.calls} ${saved.calls === 1 ? 'call' : 'calls'} from tape · ${live} live · saved ${money(saved.costUsd)} (${tokens(saved.tokens)} ${saved.tokens === 1 ? 'token' : 'tokens'}) → ${redactBody(out) as string}\n`,
+      `fork: ${saved.calls} ${saved.calls === 1 ? 'call' : 'calls'} + ${fork.stats.tools} tools from tape · ${live} live ${live === 1 ? 'call' : 'calls'} · ${fork.stats.liveTools} live ${fork.stats.liveTools === 1 ? 'tool' : 'tools'} · saved ${money(saved.costUsd)} (${tokens(saved.tokens)} ${saved.tokens === 1 ? 'token' : 'tokens'}) → ${redactBody(out) as string}\n`,
     );
     const stats = fork.stats;
     if (stats.changed)

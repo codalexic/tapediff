@@ -1,3 +1,4 @@
+import { createToolHandler, isToolRoute } from './tools.js';
 import type { ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -16,13 +17,14 @@ import {
   redactBody,
   redactHeaders,
 } from '../tape/redact.js';
-import type { Exchange, JsonValue } from '../tape/schema.js';
+import type { Exchange, JsonValue, ToolRecord } from '../tape/schema.js';
 import { readRequestBody } from './body.js';
 import type { ProxyHandler } from './server.js';
 
 export interface ReplayOptions {
   loose?: boolean;
   pace?: 'instant' | 'recorded';
+  tools?: readonly ToolRecord[];
 }
 
 type Request = Pick<Exchange['request'], 'method' | 'path' | 'body'>;
@@ -72,6 +74,11 @@ export function createReplayHandler(
   options: ReplayOptions = {},
   warn: (message: string) => void = (message) => process.stderr.write(message),
 ) {
+  const tools = createToolHandler({
+    mode: 'replay',
+    tools: options.tools,
+    warn,
+  });
   const ordered = [...exchanges].sort((a, b) => a.seq - b.seq);
   const consumed = new Set<Exchange>();
   const strict = new Map<string, Exchange[]>();
@@ -99,7 +106,9 @@ export function createReplayHandler(
     }
     return undefined;
   };
-  const handler: ProxyHandler = async ({ request, response, path, signal }) => {
+  const handler: ProxyHandler = async (context) => {
+    if (isToolRoute(context.path)) return tools.handler(context);
+    const { request, response, path, signal } = context;
     try {
       const { body } = await readRequestBody(request);
       const method = request.method ?? 'GET';
@@ -160,10 +169,12 @@ export function createReplayHandler(
     get stats() {
       return {
         requests,
-        misses,
+        misses: misses + tools.stats.misses,
         fallbacks,
         consumed: consumed.size,
-        unconsumed: unused().length,
+        unconsumed: unused().length + tools.stats.unconsumed,
+        tools: tools.stats.consumed,
+        unusedTools: tools.stats.unconsumed,
       };
     },
   };
@@ -171,7 +182,7 @@ export function createReplayHandler(
 
 export async function loadReplay(tape: string, options: ReplayOptions = {}) {
   const data = await readTapeOrFail(tape);
-  return createReplayHandler(data.exchanges, options);
+  return createReplayHandler(data.exchanges, { ...options, tools: data.tools });
 }
 
 export async function serveRecordedResponse(
