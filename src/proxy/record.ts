@@ -9,7 +9,7 @@ import { matchKey, normalizePath } from '../tape/normalize.js';
 import { redactHeaders } from '../tape/redact.js';
 import type { TapeWriter } from '../tape/io.js';
 import type { Exchange, JsonValue, SseChunk } from '../tape/schema.js';
-import type { ProxyHandler } from './server.js';
+import type { ProxyContext } from './server.js';
 import { SseParser } from './sse.js';
 import { parseBody, readRequestBody } from './body.js';
 
@@ -46,18 +46,24 @@ export function forwardingHeaders(
 export function createRecordHandler(
   writer: Pick<TapeWriter, 'appendExchange'>,
   onExchange?: (exchange: Exchange) => void,
-): ProxyHandler {
-  return async ({
-    request,
-    response,
-    provider,
-    path,
-    upstream,
-    seq,
-    startedAt,
-    started,
-    signal,
-  }) => {
+): (
+  context: ProxyContext,
+  incoming?: Awaited<ReturnType<typeof readRequestBody>>,
+) => Promise<void> {
+  return async (
+    {
+      request,
+      response,
+      provider,
+      path,
+      upstream,
+      seq,
+      startedAt,
+      started,
+      signal,
+    },
+    incoming,
+  ) => {
     let body: JsonValue = null;
     let recorded: Exchange['response'] = { status: 502, headers: {} };
     let metadata: Metadata = {};
@@ -90,7 +96,7 @@ export function createRecordHandler(
       } else responseText += text;
     };
     try {
-      const incoming = await readRequestBody(request);
+      incoming ??= await readRequestBody(request);
       const { bytes } = incoming;
       body = incoming.body;
       metadata.model = modelOf(body);

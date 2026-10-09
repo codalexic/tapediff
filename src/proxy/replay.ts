@@ -1,3 +1,4 @@
+import type { ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createTwoFilesPatch } from 'diff';
@@ -143,38 +144,12 @@ export function createReplayHandler(
         return;
       }
       consumed.add(exchange);
-      const recorded = exchange.response;
-      const headers = redactHeaders(recorded.headers);
-      if (recorded.sse) headers['content-type'] = 'text/event-stream';
-      response.writeHead(recorded.status, headers);
-      response.flushHeaders();
-      if (recorded.sse) {
-        response.socket?.setNoDelay(true);
-        const started = performance.now();
-        for (const chunk of recorded.sse) {
-          if (options.pace === 'recorded') {
-            const remaining = Math.ceil(
-              chunk.t - (performance.now() - started),
-            );
-            if (remaining > 0) await delay(remaining, undefined, { signal });
-          }
-          signal.throwIfAborted();
-          // Raw chunks retain SSE event names, data lines, comments and delimiters.
-          if (!response.write(chunk.data))
-            await once(response, 'drain', { signal });
-        }
-        response.end();
-      } else {
-        const body = recorded.body;
-        response.end(
-          body === undefined
-            ? undefined
-            : typeof body === 'string' &&
-                !/\bjson\b/i.test(headers['content-type'] ?? '')
-              ? body
-              : JSON.stringify(body),
-        );
-      }
+      await serveRecordedResponse(
+        exchange.response,
+        response,
+        signal,
+        options.pace,
+      );
     } catch (error) {
       if (!signal.aborted) throw error;
       response.destroy();
@@ -197,4 +172,46 @@ export function createReplayHandler(
 export async function loadReplay(tape: string, options: ReplayOptions = {}) {
   const data = await readTapeOrFail(tape);
   return createReplayHandler(data.exchanges, options);
+}
+
+export async function serveRecordedResponse(
+  recorded: Exchange['response'],
+  response: ServerResponse,
+  signal: AbortSignal,
+  pace: ReplayOptions['pace'] = 'instant',
+): Promise<void> {
+  try {
+    const headers = redactHeaders(recorded.headers);
+    if (recorded.sse) headers['content-type'] = 'text/event-stream';
+    response.writeHead(recorded.status, headers);
+    response.flushHeaders();
+    if (recorded.sse) {
+      response.socket?.setNoDelay(true);
+      const started = performance.now();
+      for (const chunk of recorded.sse) {
+        if (pace === 'recorded') {
+          const remaining = Math.ceil(chunk.t - (performance.now() - started));
+          if (remaining > 0) await delay(remaining, undefined, { signal });
+        }
+        signal.throwIfAborted();
+        // Raw chunks retain SSE event names, data lines, comments and delimiters.
+        if (!response.write(chunk.data))
+          await once(response, 'drain', { signal });
+      }
+      response.end();
+    } else {
+      const body = recorded.body;
+      response.end(
+        body === undefined
+          ? undefined
+          : typeof body === 'string' &&
+              !/\bjson\b/i.test(headers['content-type'] ?? '')
+            ? body
+            : JSON.stringify(body),
+      );
+    }
+  } catch (error) {
+    if (!signal.aborted) throw error;
+    response.destroy();
+  }
 }
