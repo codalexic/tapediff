@@ -1,4 +1,5 @@
 import { readTapeOrFail } from '../tape/read-or-fail.js';
+import type { TapeHeader } from '../tape/schema.js';
 import { toSteps, type Step } from '../steps.js';
 import {
   count,
@@ -39,9 +40,9 @@ export function renderSteps(
   for (const [index, step] of steps.entries()) {
     switch (step.kind) {
       case 'llm_call':
-        callNumber++;
+        if (step.provider !== 'unknown') callNumber++;
         line(
-          `#${callNumber}  ${step.model ?? step.provider}  ${count(step.inputTokens)}→${count(step.outputTokens)} tok  ${money(step.costUsd)}  ${latency(step.latencyMs)}${step.status >= 400 ? `  HTTP ${step.status}` : ''}`,
+          `${step.provider === 'unknown' ? 'unknown' : `#${callNumber}`}${step.servedFrom ? ' (from tape)' : ''}  ${step.model ?? step.provider}  ${count(step.inputTokens)}→${count(step.outputTokens)} tok  ${money(step.costUsd)}  ${latency(step.latencyMs)}${step.status >= 400 ? `  HTTP ${step.status}` : ''}`,
           colors.bold,
         );
         break;
@@ -78,15 +79,31 @@ export function renderSteps(
   return `${lines.join('\n')}\n`;
 }
 
+function forkPrefix(
+  source: TapeHeader['forkedFrom'],
+  columns: number,
+  color: boolean,
+): string {
+  if (!source) return '';
+  const format = textFormatter(columns, color);
+  const position = source.at === null ? ' (divergence)' : ` at #${source.at}`;
+  return `${format.line(`forked from ${source.tape}${position}`, format.colors.dim)}\n`;
+}
+
 export async function showCommand(
   tape: string,
   options: { json?: boolean },
 ): Promise<void> {
   const data = await readTapeOrFail(tape);
   const steps = toSteps(data.exchanges);
-  process.stdout.write(
-    options.json
-      ? `${JSON.stringify({ schemaVersion: 1, header: data.header, steps, totals: stepTotals(steps) })}\n`
-      : renderSteps(steps, process.stdout.columns ?? 100, useColor()),
-  );
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({ schemaVersion: 1, header: data.header, steps, totals: stepTotals(steps) })}\n`,
+    );
+    return;
+  }
+  const columns = process.stdout.columns ?? 100;
+  const color = useColor();
+  const prefix = forkPrefix(data.header.forkedFrom, columns, color);
+  process.stdout.write(prefix + renderSteps(steps, columns, color));
 }

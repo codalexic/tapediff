@@ -21,6 +21,7 @@ import {
 export type Step =
   | {
       kind: 'llm_call';
+      servedFrom?: { seq: number };
       seq: number;
       provider: Provider;
       model: string | null;
@@ -196,6 +197,7 @@ export function toSteps(exchanges: Exchange[]): Step[] {
     const usage = exchange.usage ?? metadata.usage;
     steps.push({
       kind: 'llm_call',
+      ...(exchange.servedFrom ? { servedFrom: exchange.servedFrom } : {}),
       seq: exchange.seq,
       provider: exchange.provider,
       model,

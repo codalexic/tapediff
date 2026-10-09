@@ -1,7 +1,8 @@
-import { Command, Option } from 'commander';
+import { Command, Option, InvalidArgumentError } from 'commander';
 
 import { version } from './version.js';
 import { recordCommand, type RecordOptions } from './commands/record.js';
+import { forkCommand, type ForkCommandOptions } from './commands/fork.js';
 import { replayCommand } from './commands/replay.js';
 import { testCommand } from './commands/test.js';
 import { showCommand } from './commands/show.js';
@@ -51,6 +52,35 @@ export function createProgram(): Command {
     .action(async (tape: string, command: string[], options: ReplayOptions) => {
       process.exitCode = (await replayCommand(tape, command, options)).code;
     });
+
+  program
+    .command('fork')
+    .description('Replay a prefix and record the live continuation')
+    .argument('<tape>', 'source tape')
+    .argument('<cmd...>', 'command to run (after --)')
+    .option('--at <n>', 'go live from LLM call number n', (value: string) => {
+      if (
+        !/^\d+$/.test(value) ||
+        !Number.isSafeInteger(Number(value)) ||
+        Number(value) < 1
+      )
+        throw new InvalidArgumentError('must be an integer >= 1');
+      return Number(value);
+    })
+    .option('--out <path>', 'output tape path (default: <source>.fork.tape)')
+    .option('--force', 'overwrite an existing output tape')
+    .addOption(
+      new Option('--pace <mode>', 'replay timing')
+        .choices(['recorded', 'instant'])
+        .default('instant'),
+    )
+    .option('--diff', 'print a diff after the child exits')
+    .option('--no-color', 'disable colored output')
+    .action(
+      async (tape: string, command: string[], options: ForkCommandOptions) => {
+        process.exitCode = await forkCommand(tape, command, options);
+      },
+    );
 
   program
     .command('diff')

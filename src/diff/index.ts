@@ -32,7 +32,15 @@ function delta(a: Totals, b: Totals): Totals {
 }
 
 export function diffRuns(a: Run, b: Run) {
-  const ops = align(a.steps, b.steps);
+  // Provenance is inspection metadata, outside the diff JSON contract.
+  const withoutOrigin = (steps: readonly Step[]) =>
+    steps.map((step) => {
+      if (step.kind !== 'llm_call' || !step.servedFrom) return step;
+      const call = { ...step };
+      delete call.servedFrom;
+      return call;
+    });
+  const ops = align(withoutOrigin(a.steps), withoutOrigin(b.steps));
   const index = ops.findIndex((op) => op.type !== 'equal');
   const first = ops[index];
   const totalsA = stepTotals(a.steps);

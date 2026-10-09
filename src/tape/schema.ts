@@ -17,6 +17,14 @@ export const tapeHeaderSchema = z.object({
   createdAt: timestamp,
   name: z.string().optional(),
   command: z.array(z.string()),
+  forkedFrom: z
+    .object({
+      tape: z.string(),
+      at: z.number().int().min(1).nullable(),
+      mode: z.enum(['divergence', 'positional']),
+      sourceCreatedAt: timestamp,
+    })
+    .optional(),
   tool: z.object({ name: z.literal('tapediff'), version: z.string() }),
 });
 export type TapeHeader = z.infer<typeof tapeHeaderSchema>;
@@ -60,6 +68,7 @@ export const exchangeSchema = z.object({
   model: z.string().optional(),
   costUsd: nonnegative.nullable().optional(),
   aborted: z.boolean().optional(),
+  servedFrom: z.object({ seq: count }).optional(),
 });
 export type Exchange = z.infer<typeof exchangeSchema>;
 

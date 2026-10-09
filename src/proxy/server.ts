@@ -55,13 +55,13 @@ export function upstreamUrl(
 }
 
 export async function createProxy(options: {
-  mode: 'record' | 'replay';
+  mode: 'record' | 'replay' | 'fork';
   handler: ProxyHandler;
   env?: NodeJS.ProcessEnv;
 }) {
   // Capture once, before the caller builds the child's proxy environment.
   const upstreams = resolveUpstreams(options.env ?? process.env);
-  if (options.mode === 'record') {
+  if (options.mode !== 'replay') {
     for (const base of Object.values(upstreams)) upstreamUrl(base, '/');
   }
   const active = new Map<Promise<void>, AbortController>();
@@ -89,7 +89,7 @@ export async function createProxy(options: {
       started: performance.now(),
       signal: controller.signal,
       upstream:
-        options.mode === 'record' && provider !== 'unknown'
+        options.mode !== 'replay' && provider !== 'unknown'
           ? upstreamUrl(upstreams[provider], path, provider)
           : undefined,
     };

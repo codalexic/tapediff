@@ -36,7 +36,18 @@ export class TapeWriter {
   ): Promise<TapeWriter> {
     const patterns = [...extraPatterns];
     const clean = validateTapeRecord(
-      { ...header, command: redactBody(header.command, patterns) },
+      {
+        ...header,
+        command: redactBody(header.command, patterns),
+        ...(header.forkedFrom
+          ? {
+              forkedFrom: {
+                ...header.forkedFrom,
+                tape: redactBody(header.forkedFrom.tape, patterns),
+              },
+            }
+          : {}),
+      },
       1,
     );
     const file = await open(path, 'wx', 0o600);
