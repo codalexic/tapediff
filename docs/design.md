@@ -1,14 +1,17 @@
 # Design notes
 
-Record an agent's LLM traffic, replay it deterministically (free, offline, CI-safe), and diff two runs to see exactly where behavior diverged.
+Record an agent's LLM traffic, replay stored responses without provider calls,
+and diff two runs to see where behavior diverged. The child still executes.
 
 ## CLI
 
 ```
 tapediff record [--out run.tape] [--name <label>] -- <cmd...>
 tapediff replay <tape> [--strict|--loose] [--pace recorded|instant] -- <cmd...>
+tapediff fork <tape> [--at n] [--out fork.tape] [--diff] -- <cmd...>
 tapediff diff <a.tape> <b.tape> [--json] [--tui] [--no-color]
 tapediff show <tape> [--json]
+tapediff export <tape> [--out traces.json] [--endpoint url] [--include-content]
 tapediff test <dir|glob> -- <cmd...>       # replay each tape; non-zero exit on any miss/drift
 ```
 
@@ -17,10 +20,10 @@ Exit codes: 0 ok, 1 diff found / test drift, 2 usage error, 3 replay miss, child
 ## Interception
 
 - Local HTTP proxy on 127.0.0.1, random free port.
-- `record`/`replay` spawn the child with env vars pointing SDKs at the proxy:
+- `record`/`replay`/`fork`/`test` spawn the child with env vars pointing SDKs at the proxy:
   `OPENAI_BASE_URL=http://127.0.0.1:<port>/openai/v1`, `OPENAI_API_BASE` (same), `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>/anthropic`, and `TAPEDIFF_PROXY_URL=http://127.0.0.1:<port>` for opt-in tool helpers.
 - Upstreams: default `https://api.openai.com` and `https://api.anthropic.com`; override via `TAPEDIFF_OPENAI_UPSTREAM` / `TAPEDIFF_ANTHROPIC_UPSTREAM` (tests use a local fake upstream). If the user already set `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`, use that as upstream.
-- Supported endpoints: OpenAI `/v1/chat/completions`, `/v1/responses`; Anthropic `/v1/messages`. Any other path is passed through (record mode) and recorded generically.
+- Supported endpoints: OpenAI `/v1/chat/completions`, `/v1/responses`; Anthropic `/v1/messages`. Other paths under a provider prefix are forwarded in record mode and recorded generically; unprefixed unknown routes return a recorded 404.
 - Streaming SSE: record raw chunks with relative timestamps (ms). Replay emits chunks instantly by default, or at recorded pace with `--pace recorded`.
 - Must handle: concurrent requests, upstream errors (4xx/5xx recorded and replayed faithfully), client abort, child exit, Ctrl-C (proxy + child cleaned up, tape flushed).
 - Windows, macOS, Linux.
@@ -51,7 +54,7 @@ an HTTP exchange (unchanged, with no kind field) or a `kind: "tool"` record:
 
 - `matchKey` = sha256 of canonical JSON of {method, path, normalized body}. Normalization: sort keys; drop `user`, `metadata`, `stream_options`, `store`, `service_tier`, `seed`(loose only), request ids.
 - Exchanges with identical keys are consumed in recorded order (queue per key).
-- `--strict` (default): unmatched request → respond 599-ish error to the client with JSON body explaining the miss, print a readable diff vs nearest recorded request (by structural similarity) to stderr, and exit 3 after child finishes.
+- `--strict` (default): unmatched request → HTTP 500 with retries disabled, print a redacted diff against the nearest unused request at that endpoint, and exit 3 after the child finishes.
 - `--loose`: if no exact match, fall back to next unconsumed exchange with same endpoint+model in order, warn.
 
 ## Steps model (provider-neutral)
@@ -74,7 +77,7 @@ an HTTP exchange (unchanged, with no kind field) or a `kind: "tool"` record:
 ## Fork
 
 `fork` reruns a command, serves a recorded prefix, then records live traffic.
-Strict divergence matching switches permanently on the first LLM miss;
+Strict divergence matching switches permanently on the first LLM or wrapped tool miss;
 `--at n` instead assigns the first n-1 LLM responses by request arrival order.
 Response serving and upstream recording share replay/record implementations.
 Optional provenance fields identify the source and served exchanges and tools;
@@ -96,6 +99,36 @@ tape operations. See [the mapping and specification reference](otel.md).
 
 `src/pricing.json`: `{ "<model-prefix>": {"input": usdPer1M, "output": usdPer1M, "cacheRead"?, "cacheWrite"?} }`, longest-prefix match; unknown model → cost null, never crash.
 
-## Non-goals v0.1
+## Tradeoffs
+
+- **HTTP proxy, not SDK patches or framework callbacks.** The base-URL boundary
+  works the same for every SDK and framework that honors it, in any language.
+  Patching or callbacks could see richer runtime state, but would couple capture
+  to specific library versions. The cost: the proxy can't see local computation
+  or memory.
+- **Opt-in tool recording.** A tool call in a model response doesn't prove the
+  tool ran, what side effects it had, or what it actually returned. A wrapper
+  marks that boundary explicitly instead of guessing.
+- **Two fork modes.** Divergence mode finds the first request that changed.
+  Positional mode deliberately reuses responses even though the prefix prompts
+  changed. That's what makes "fix call #3, keep #1-#2" possible, and it's why
+  fork warns about every changed request it serves.
+- **Deliberately not done:** process snapshots, durable execution, framework
+  state restore.
+
+When something else is the better tool:
+
+- [LangGraph checkpoints and time travel](https://docs.langchain.com/oss/python/langgraph/use-time-travel)
+  resume or edit graph state at a saved checkpoint, inside LangGraph.
+- [Temporal-style durable execution](https://docs.temporal.io/workflow-execution)
+  rebuilds workflow state from event history, for recovering long-lived workflows.
+- [vcrpy](https://vcrpy.readthedocs.io/en/latest/) and
+  [Polly.js](https://netflix.github.io/pollyjs/) are general HTTP cassettes for
+  their test runtimes.
+
+tapediff's niche is provider-aware timelines, behavior diffs, and a live
+continuation from any recorded call, independent of framework and language.
+
+## Non-goals
 
 No hosted service, no telemetry, no SDK monkeypatching, no HTTPS MITM.

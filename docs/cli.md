@@ -209,7 +209,7 @@ Commands:
   `--json` retains full content and takes precedence over `--tui`.
 - **show**: displays deduplicated user/system inputs, calls, tools, results,
   assistant text and errors. `--json` emits `{schemaVersion: 1, header, steps,
-totals}`. Step `kind` is input, llm_call, tool_call, tool_result, text, or error.
+totals, tools}`. Step `kind` is input, llm_call, tool_call, tool_result, text, or error.
   Totals include calls, inputTokens, outputTokens, tokens, costUsd, latencyMs.
   Missing usage becomes zero; cost is null if any contributing call is unpriced.
 - **test**: strictly replays each tape, sequentially, and writes PASS/FAIL rows
@@ -254,7 +254,7 @@ The child otherwise inherits its parent's environment and standard streams.
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Read by SDKs; replay/test fill empty values with a placeholder. Record and fork do not.                                                                 |
 | `OPENAI_BASE_URL`                     | Record/fork upstream fallback; child receives `http://127.0.0.1:<port>/openai/v1`.                                                                      |
-| `OPENAI_API_BASE`                     | Child receives the same OpenAI URL for older clients. Not used to choose the recording upstream.                                                        |
+| `OPENAI_API_BASE`                     | Child receives the same OpenAI URL for older clients. Recording upstream fallback after `OPENAI_BASE_URL`.                                              |
 | `ANTHROPIC_BASE_URL`                  | Record/fork upstream fallback; child receives `http://127.0.0.1:<port>/anthropic`.                                                                      |
 | `TAPEDIFF_OPENAI_UPSTREAM`            | Record/fork override, before `OPENAI_BASE_URL`; default `https://api.openai.com`.                                                                       |
 | `TAPEDIFF_ANTHROPIC_UPSTREAM`         | Record/fork override, before `ANTHROPIC_BASE_URL`; default `https://api.anthropic.com`.                                                                 |

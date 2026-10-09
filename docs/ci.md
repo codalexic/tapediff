@@ -8,8 +8,8 @@ your agent executes need their own fixtures or mocks.
 
 ## GitHub Actions
 
-For your own project, the README has a [minimal workflow](../README.md#use-it-in-ci).
-This one runs the bundled example from a checkout of this repo:
+This workflow runs the bundled example from a checkout of this repo. For your
+project, install its dependencies and point `test` at your reviewed tapes:
 
 ```yaml
 name: Example snapshots
@@ -61,8 +61,8 @@ answer quality. Add application assertions for those requirements.
 1. Keep the baseline and change the agent/prompt intentionally.
 2. Re-record to a **new path** using the scenario and a provider key in your
    local environment. Record may incur charges. For the bundled examples,
-   `npm run examples:record` instead uses a local mock and overwrites all six
-   example tapes; timestamps and timings vary.
+   `npm run examples:record` instead uses a local mock and overwrites eight
+   example tapes when both Python environments are installed; timestamps and timings vary.
 3. Review `tapediff diff` between the baseline and candidate. Exit 1 is expected
    for a change. Inspect the first changed prompt, tools, final answer, and totals;
    inspect complete content with JSON or the interactive viewer if truncated.

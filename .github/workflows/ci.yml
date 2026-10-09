@@ -32,6 +32,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r examples/python-openai/requirements.txt
+      - run: python -m venv examples/python-langgraph/.venv
+      - if: runner.os != 'Windows'
+        run: examples/python-langgraph/.venv/bin/python -m pip install -r examples/python-langgraph/requirements.txt
+      - if: runner.os == 'Windows'
+        run: examples/python-langgraph/.venv/Scripts/python -m pip install -r examples/python-langgraph/requirements.txt
       - run: python -m unittest discover -s clients/python -v
       - run: npm run typecheck
       - run: npm run lint

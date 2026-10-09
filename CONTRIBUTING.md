@@ -8,35 +8,45 @@ npm ci
 npm run build
 npm run lint
 npm run typecheck
+npm run format:check
 npm test
+python -m unittest discover -s clients/python -v
 ```
 
-All four checks must pass before a PR. `npm test` builds the real CLI and uses
+All checks must pass before a PR. `npm test` builds the real CLI and uses
 local fixtures/mock upstreams, never real provider APIs. Tests live in `test/unit`
 and `test/e2e`. Install the [Python example dependencies](examples/python-openai/README.md)
 to enable its e2e tests; otherwise those tests explicitly skip. The Node example
 SDK is also available through the root development dependencies.
 
+Python client tests use only the standard library and run independently of the
+example SDKs. The vendored helpers in both Python examples must stay byte-identical
+to `clients/python/tapediff_tools.py`; an e2e test checks this.
+For the [LangGraph example](examples/python-langgraph/README.md), create a separate
+`examples/python-langgraph/.venv` and install its `requirements.txt` there. Its
+`langchain-openai` needs a newer OpenAI SDK than the pinned `python-openai` example.
+Tests and recording prefer each example's own venv, then Python on PATH, and
+report a skip if the required packages are absent. CI installs both environments.
+
 ## Scripts
 
-| Script                            | Purpose                                                            |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `npm run build`                   | Bundle the CLI with tsup.                                          |
-| `npm run dev`                     | Watch and rebuild.                                                 |
-| `npm run lint`                    | ESLint.                                                            |
-| `npm run typecheck`               | Strict TypeScript checks, no emit.                                 |
-| `npm run format`                  | Prettier writes formatting across the repository. Review the diff. |
-| `npm test` / `npm run test:watch` | Offline tests, once / watch.                                       |
-| `npm run test:smoke`              | Opt-in live provider smoke tests; see below.                       |
-| `npm run examples:record`         | Record six example tapes through the local mock; overwrites them.  |
-| `npm run docs:help`               | Refresh CLI reference from real help output after build.           |
-| `npm run docs:screenshot`         | Capture real diff/show output as self-contained SVGs after build.  |
+| Script                            | Purpose                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run build`                   | Bundle the CLI with tsup.                                                                    |
+| `npm run dev`                     | Watch and rebuild.                                                                           |
+| `npm run lint`                    | ESLint.                                                                                      |
+| `npm run typecheck`               | Strict TypeScript checks, no emit.                                                           |
+| `npm run format`                  | Prettier writes formatting across the repository. Review the diff.                           |
+| `npm test` / `npm run test:watch` | Offline tests, once / watch.                                                                 |
+| `npm run test:smoke`              | Opt-in live provider smoke tests; see below.                                                 |
+| `npm run examples:record`         | Record eight example tapes through the local mock; overwrites them.                          |
+| `npm run docs:help`               | Refresh CLI reference from real help output after build.                                     |
+| `npm run docs:screenshot`         | Capture real diff/show/fork output as SVGs after build. Requires the LangGraph dependencies. |
 
-Install both examples' dependencies before recording (the scripts prefer
-`examples/python-openai/.venv`). The CLI reference is generated from `--help`,
+Install all three examples' dependencies before recording. The CLI reference is generated from `--help`,
 and a test checks that commands in the READMEs use real flags.
 
-To regenerate the six committed example tapes through the local mock (no API key):
+To regenerate the eight committed example tapes through the local mock (no API key):
 
 ```sh
 npm run examples:record
@@ -61,7 +71,7 @@ This overwrites the committed tapes. Review the diff, then rebuild and run
    and `contents: write` for the GitHub release. Never commit the token.
 4. After review and a green CI matrix (Node 20/22/24 on Linux/macOS/Windows, plus
    package checks on Linux/Windows), the maintainer pushes the matching `v*` tag,
-   for example `v0.1.0`.
+   for example `v0.2.0`.
 5. [Release](.github/workflows/release.yml) verifies the tag/version and changelog,
    runs checks, publishes with `npm publish --provenance --access public`, then
    creates a GitHub release from that version's changelog section. The
@@ -90,13 +100,13 @@ remove the mapping in a `finally` block. For this checkout (PowerShell):
 ```powershell
 subst R: C:\Users\TheGoatTsiklauri\Desktop\opensource
 try {
-  Set-Location R:\tapediff
+  Set-Location R:\agentdiff
   npm.cmd run build
   npm.cmd run lint
   npm.cmd run typecheck
   npm.cmd test
 } finally {
-  Set-Location C:\Users\TheGoatTsiklauri\Desktop\opensource\tapediff
+  Set-Location C:\Users\TheGoatTsiklauri\Desktop\opensource\agentdiff
   subst R: /d
 }
 ```

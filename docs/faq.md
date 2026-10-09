@@ -27,8 +27,35 @@ Environment-variable support was checked in all four official client implementat
 
 These clients consult the environment when no explicit base URL overrides it.
 This does not certify every SDK version, endpoint, or cloud-specific subclass.
-LangChain and LlamaIndex are untested: they should work if they use these SDKs
-and preserve environment-based URL configuration.
+The [LangGraph example](../examples/python-langgraph/README.md) tests pinned
+LangGraph and `langchain-openai` through the same HTTP boundary, including
+wrapped tools and fork. LlamaIndex remains untested.
+
+## Does fork restore my agent's memory/state?
+
+No. Fork starts the command again, serves recorded responses for a prefix, then
+records live requests. Local computation still runs and rebuilds state; wrapped
+tools supply stored JSON results. Process memory, files, databases, and framework
+checkpoints are not restored. Use your framework's persistence mechanism when
+you need checkpoint recovery. See [fork caveats](fork.md#caveats).
+
+## Do I have to wrap my tools?
+
+No. HTTP recording and replay work without wrappers. Unwrapped tools execute
+normally on every run, including replay and a fork's served prefix, so they may
+need network access or repeat side effects. Wrapping opts into recording JSON
+results and skipping execution during replay. A replayed result does not recreate
+files or other side effects that later code might need. See [tools](tools.md).
+
+## Can I view runs in Jaeger/Langfuse/Phoenix?
+
+Yes, via `tapediff export run.tape --endpoint <OTLP/HTTP URL>`, or export a JSON
+file for later ingestion. Jaeger has a [verified walkthrough](otel.md#try-it-with-jaeger);
+Langfuse and Phoenix may need a collector, authentication, or backend-specific
+configuration and have not been checked end-to-end here. GenAI views vary.
+Export preserves original timestamps; widen the viewer's time range. Content is
+off by default and requires `--include-content`. It reconstructs a trace after
+the run; replay and behavior diff remain in tapediff. See [limitations](otel.md#limitations).
 
 ## What counts as drift?
 

@@ -19,6 +19,9 @@ Same answer. Extra tool call. The diff catches the prompt change that caused it.
 - **Agent changes are invisible.** A small prompt edit can add tool calls while the answer looks identical.
 - **Real runs cost money and aren't deterministic.** Replay recorded LLM responses without another provider request.
 - **Eyeballing doesn't scale.** Review behavior diffs locally and fail CI on request drift.
+- **Iteration repeats work.** Fork from a recorded call and reuse the prefix.
+- **Tools have side effects.** Opt into recording their results for replay.
+- **Runs need inspection.** Export tapes to an OpenTelemetry trace viewer.
 
 ## Quickstart
 
@@ -51,19 +54,18 @@ npx tapediff test tapes -- python agent.py "{tape}"
 The example ships with recorded tapes, so nothing hits a real API. `paris-v2` is
 a deliberately broken version of the agent; see the
 [example README](examples/python-openai/README.md) for the walkthrough. There is
-also a [Node + Anthropic example](examples/ts-anthropic/README.md).
+also a [Node + Anthropic example](examples/ts-anthropic/README.md) and a
+[LangGraph research → draft → review example](examples/python-langgraph/README.md).
 
 ## How it works
 
 tapediff starts a loopback HTTP proxy and points the child process's SDK base
 URLs at it. Record forwards requests and writes a redacted JSONL tape. Replay
 matches requests and serves the stored responses, including SSE streams, without
-contacting the provider. Your agent still executes. Opt into tool replay with
-`import { tool } from 'tapediff/tools'` and
-`await tool('get_weather', { city }, (args) => getWeather(args.city))`.
-Wrapped tools record JSON results and skip execution during replay and a fork's
-served prefix. Without the proxy environment variable, they call normally.
-Python has a vendorable helper too; see [recording tools](docs/tools.md).
+contacting the provider. Diff compares prompts, calls, tools, and answers.
+Your agent still executes: fork serves a recorded prefix before going live,
+wrapped tools serve recorded JSON results, and export reconstructs a trace
+from the tape. No framework callbacks or SDK patches are involved.
 
 ```mermaid
 flowchart LR
@@ -103,6 +105,19 @@ npx tapediff fork before.tape --at 2 --diff -- python my_agent.py
 Omit `--at` to go live at the first LLM or wrapped tool mismatch;
 see [fork semantics and prefix warnings](docs/fork.md).
 
+![tapediff fork summary and diff](docs/assets/fork.svg)
+
+The [LangGraph walkthrough](examples/python-langgraph/README.md) fixes a draft
+prompt while serving three research calls and two tool results from tape.
+Fork reruns the process; it does not restore framework state.
+
+## Record tools
+
+Wrap JSON-returning tools with `tapediff/tools` (JS/TS) or the vendored Python
+helper. They execute normally without tapediff; record captures their results,
+and replay skips execution. Unwrapped tools still run.
+See [tool helpers, matching and side effects](docs/tools.md).
+
 ## Export to OpenTelemetry
 
 Open a recorded run in Jaeger, Grafana Tempo, Phoenix, Langfuse, or another OTLP backend.
@@ -113,26 +128,10 @@ See [export mapping, privacy, and a Jaeger walkthrough](docs/otel.md); diff stay
 
 ## Use it in CI
 
-For a Python agent with committed `tapes/`, `agent.py`, and `requirements.txt`:
+For a Python agent with committed tapes and installed dependencies:
 
-```yaml
-name: Agent snapshots
-on: [push, pull_request]
-permissions:
-  contents: read
-jobs:
-  replay:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.11'
-      - run: python -m pip install -r requirements.txt
-      - run: npx tapediff test tapes -- python agent.py "{tape}"
+```sh
+npx tapediff test tapes -- python agent.py "{tape}"
 ```
 
 No API keys needed in CI. `test` fails when the agent makes a request that isn't
@@ -141,11 +140,14 @@ including how to update tapes.
 
 ## Supported
 
-| Provider  | Endpoint               | JSON | SSE streaming |
-| --------- | ---------------------- | ---- | ------------- |
-| OpenAI    | `/v1/chat/completions` | Yes  | Yes           |
-| OpenAI    | `/v1/responses`        | Yes  | Yes           |
-| Anthropic | `/v1/messages`         | Yes  | Yes           |
+| Capability              | Support                                          |
+| ----------------------- | ------------------------------------------------ |
+| OpenAI Chat Completions | `/v1/chat/completions`, JSON and SSE             |
+| OpenAI Responses        | `/v1/responses`, JSON and SSE                    |
+| Anthropic Messages      | `/v1/messages`, JSON and SSE                     |
+| Tool recording, JS/TS   | `tapediff/tools`, ESM and CommonJS               |
+| Tool recording, Python  | Vendored standard-library helper, Python ≥3.9    |
+| OTLP export             | OTLP/HTTP JSON, file or endpoint; content opt-in |
 
 Works with the official OpenAI and Anthropic SDKs (Python and Node) and anything
 else that reads `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`. If you pass a base URL
@@ -156,8 +158,8 @@ before recording. I've used it with Gemini's OpenAI endpoint
 (`https://generativelanguage.googleapis.com/v1beta/openai/`). Cost shows as
 unknown for models that aren't in the pricing table.
 
-LangChain and LlamaIndex haven't been tried yet, but should work since they use
-the official SDKs underneath.
+LangGraph with `langchain-openai` is exercised against the mock and offline
+replay in the [framework example](examples/python-langgraph). LlamaIndex is untested.
 
 ## Limitations
 
@@ -170,13 +172,18 @@ the official SDKs underneath.
 - Wrapped tools replay recorded JSON results without execution. Unwrapped tools
   still run live. Side effects that later steps depend on need care; see
   [tool limitations](docs/tools.md#limitations).
+- Fork restarts the command; it does not snapshot processes or restore memory,
+  files, or framework checkpoints. Positional forks can mask changed prefix requests.
+- Export reconstructs traces after a run. Backend ingestion and GenAI views vary;
+  see [export limitations](docs/otel.md#limitations).
 - The [pricing table](src/pricing.json) is best-effort. Unknown models show
   unknown cost; recorded cost is an estimate, not a bill.
 
 ## Docs
 
 [CLI reference](docs/cli.md) · [Tape format](docs/tape-format.md) ·
-[Matching](docs/matching.md) · [Tools](docs/tools.md) · [CI](docs/ci.md) · [FAQ](docs/faq.md) ·
+[Matching](docs/matching.md) · [Fork](docs/fork.md) · [Tools](docs/tools.md) · [Export](docs/otel.md) ·
+[CI](docs/ci.md) · [FAQ](docs/faq.md) ·
 [Diff JSON schema](docs/diff-json-schema.md) · [Roadmap](docs/roadmap.md)
 
 ## Contributing

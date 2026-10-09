@@ -19,9 +19,8 @@ A fork header additionally has optional `forkedFrom`:
 
 `{tape: string, at: number | null, mode: "divergence" | "positional", sourceCreatedAt: string}`.
 `tape` is the source path as supplied, redacted before writing. `at` is an integer
-
-> =1 for positional mode, or null for divergence mode. `sourceCreatedAt` copies
-> the source header's ISO timestamp. `command` identifies the new child command.
+≥1 for positional mode, or null for divergence mode. `sourceCreatedAt` copies
+the source header's ISO timestamp. `command` identifies the new child command.
 
 ## Exchange
 
