@@ -94,6 +94,59 @@ const attrs = (span: { attributes: { key: string; value: unknown }[] }) =>
 const base = (): Tape =>
   structuredClone({ header, exchanges: [exchange], tools: [] });
 
+it('exports 5,000 exchanges and 5,000 linked tools within two seconds', () => {
+  const tape: Tape = { header, exchanges: [], tools: [] };
+  for (let index = 0; index < 5_000; index++) {
+    tape.exchanges.push({
+      ...exchange,
+      id: index * 2,
+      seq: index * 2,
+      response: {
+        status: 200,
+        headers: {},
+        body: {
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    id: `call_${index}`,
+                    type: 'function',
+                    function: {
+                      name: 'lookup',
+                      arguments: JSON.stringify({ index }),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+    tape.tools.push({
+      kind: 'tool',
+      id: index * 2 + 1,
+      seq: index * 2 + 1,
+      name: 'lookup',
+      args: { index },
+      result: index,
+      matchKey: exchange.matchKey,
+      timing: exchange.timing,
+    });
+  }
+  const started = performance.now();
+  const output = spans(tape);
+  const elapsed = performance.now() - started;
+  expect(output).toHaveLength(10_001);
+  expect(output.filter((span) => span.events)).toHaveLength(0);
+  for (let index = 0; index < 5_000; index++)
+    expect(attrs(output[index * 2 + 2]!)['gen_ai.tool.call.id']).toEqual({
+      stringValue: `call_${index}`,
+    });
+  if (!process.env.CI) expect(elapsed).toBeLessThan(2_000);
+});
+
 it.each(fixtures)(
   'exports %s to golden OTLP JSON with valid parents and bounds',
   async (name) => {

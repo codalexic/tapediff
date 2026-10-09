@@ -94,31 +94,38 @@ function linkTools(
   tools: readonly ToolRecord[],
   inspected: readonly InspectedExchange[],
 ): ToolLinks {
-  const calls = inspected.flatMap(({ exchange, calls }) =>
-    calls.map((call) => ({ call, seq: exchange.seq })),
-  );
-  const candidates = new Map(
-    tools.map((tool) => [
-      tool,
-      calls.filter(
-        ({ call, seq }) =>
-          seq < tool.seq &&
-          call.name === tool.name &&
-          canonicalJson(call.args) === canonicalJson(tool.args),
-      ),
-    ]),
-  );
+  const groups = new Map<
+    string,
+    {
+      calls: { call: ToolCall; seq: number }[];
+      tools: ToolRecord[];
+    }
+  >();
+  const group = (name: string, args: ToolRecord['args']) => {
+    const key = canonicalJson({ name, args });
+    let entry = groups.get(key);
+    if (!entry) {
+      entry = { calls: [], tools: [] };
+      groups.set(key, entry);
+    }
+    return entry;
+  };
+  for (const { exchange, calls } of inspected)
+    for (const call of calls)
+      group(call.name, call.args).calls.push({ call, seq: exchange.seq });
+  for (const tool of tools) group(tool.name, tool.args).tools.push(tool);
   const linked = new Map<ToolRecord, ToolCall>();
-  for (const [tool, matches] of candidates) {
-    const match = matches[0];
-    // Both directions must be unique; repeated arguments cannot establish identity.
-    if (
-      matches.length === 1 &&
-      match &&
-      [...candidates.values()].filter((others) => others.includes(match))
-        .length === 1
-    )
-      linked.set(tool, match.call);
+  for (const { calls, tools } of groups.values()) {
+    calls.sort((a, b) => a.seq - b.seq);
+    tools.sort((a, b) => a.seq - b.seq);
+    const first = calls[0];
+    const last = tools.at(-1);
+    if (!first || !last || first.seq >= last.seq) continue;
+    // Only one preceding call and one subsequent tool establish identity.
+    if (calls[1] && calls[1].seq < last.seq) continue;
+    const previous = tools.at(-2);
+    if (previous && previous.seq > first.seq) continue;
+    linked.set(last, first.call);
   }
   return linked;
 }
@@ -230,12 +237,10 @@ function chatAttributes(info: InspectedExchange): Attribute[] {
 
 function toolCallEvents(
   calls: readonly ToolCall[],
-  linked: ToolLinks,
+  linked: ReadonlySet<ToolCall>,
   timeUnixNano: string,
 ): Span['events'] {
-  const unrecorded = calls.filter(
-    (call) => ![...linked.values()].includes(call),
-  );
+  const unrecorded = calls.filter((call) => !linked.has(call));
   return unrecorded.length
     ? unrecorded.map((call) => ({
         name: 'gen_ai.tool.call',
@@ -309,7 +314,7 @@ function contentAttributes(info: InspectedExchange): Attribute[] {
 function chatSpan(
   info: InspectedExchange,
   context: TraceContext,
-  linked: ToolLinks,
+  linked: ReadonlySet<ToolCall>,
   includeContent: boolean,
 ): Span {
   const model = modelOf(info.exchange.request.body) ?? info.exchange.model;
@@ -399,11 +404,18 @@ export function toOtlp(tape: Tape, options: ExportOptions = {}) {
   const context = { traceId, rootId: hash(traceId + '-1root').slice(0, 16) };
   const inspected = tape.exchanges.map(inspectRecord);
   const linked = linkTools(tape.tools, inspected);
+  const linkedCalls = new Set(linked.values());
+  const byExchange = new Map(inspected.map((info) => [info.exchange, info]));
   const children = records.map((record) => {
     if ('kind' in record) return toolSpan(record, context, linked.get(record));
     if (record.provider === 'unknown') return unknownRouteSpan(record, context);
-    const info = inspected.find((item) => item.exchange === record)!;
-    return chatSpan(info, context, linked, options.includeContent ?? false);
+    const info = byExchange.get(record)!;
+    return chatSpan(
+      info,
+      context,
+      linkedCalls,
+      options.includeContent ?? false,
+    );
   });
   const root = rootSpan(tape.header, context, inspected, children);
   return {
